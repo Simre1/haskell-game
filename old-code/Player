@@ -1,0 +1,72 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE Arrows #-}
+
+module Player where
+
+
+import qualified SDL
+
+import Gamelude
+
+import qualified SDL
+import Debug.Trace
+
+
+parsePlayerInput :: PlayerInput -> (SDL.Scancode -> Bool) -> PlayerInput
+parsePlayerInput pl f =
+  let newPl = V2
+              (calcAxis SDL.ScancodeLeft SDL.ScancodeRight)
+              (calcAxis SDL.ScancodeUp SDL.ScancodeDown)
+  in PlayerInput newPl
+  where boolToInt = \case
+          True -> 1
+          False -> 0
+        sumV2 (V2 a b) = a + b
+        calcAxis :: SDL.Scancode -> SDL.Scancode -> Int
+        calcAxis a b = boolToInt (f a) + boolToInt (f b)
+
+createPlayerInput :: Bool -> Bool -> Bool -> Bool -> PlayerInput
+createPlayerInput l r b t = PlayerInput $ V2 (bTi r - bTi l) (bTi t - bTi b)
+  where bTi True = 1
+        bTi False = 0
+
+newtype PlayerInput = PlayerInput {playerInput :: V2 Int} deriving Show
+
+runPlayerInput :: (Member (Input [SDL.Event]) r) => Signal (Semantic (Input PlayerInput : r)) a b -> Signal (Semantic r) a b
+runPlayerInput = runInput $ createPlayerInput <$>
+                              (fmap isJust $ withConstantInput () $ getKeyState $ filter SDL.ScancodeLeft) <*>
+                              (fmap isJust $ withConstantInput () $ getKeyState $ filter SDL.ScancodeRight) <*>
+                              (fmap isJust $ withConstantInput () $ getKeyState $ filter SDL.ScancodeDown) <*>
+                              (fmap isJust $ withConstantInput () $ getKeyState $ filter SDL.ScancodeUp)
+
+  where
+    filter :: SDL.Scancode -> SDL.Keysym -> Bool
+    filter = (.SDL.keysymScancode) <$> (==)
+
+
+
+type PlayerEffect r = (Member Graphics r, Member (Input PlayerInput) r)
+
+
+data Player = Player {playerPosition :: V2 Int}
+
+
+runPlayerEffect :: (Member (Input [SDL.Event]) r) => Signal (Semantic (Input PlayerInput : r)) a b -> Signal (Semantic r) a b
+runPlayerEffect = runPlayerInput
+
+player :: (Member Graphics r, Member (Input [SDL.Event]) r) => Signal (Semantic r) () ()
+player = runPlayerEffect $ fmap (const ()) $ simpleFeedback (Player (V2 0 0)) $
+  proc (Player pos) -> do
+    newPos <- (+) . (*3) . playerInput <$> arrAction getInput <*> arr id -< pos
+    arrM (render 0) -< renderPlayer (Player pos)
+    returnA -< Player newPos
+
+renderPlayer :: Player -> RenderAction ()
+renderPlayer (Player pos) = withSettings (rendererColour $ darkgray `withOpacity` 1) $
+  do
+    rectangle $ empty
+    withSettings (rendererColour $ white `withOpacity` 1) $ do
+      rectangle $ pure $ newRectangle pos (V2 100 100)
+    withSettings (rendererColour $ navy `withOpacity` 1) $ do
+      rectangle $ pure $ newRectangle (pos + V2 25 25) (V2 50 50)
+    pure ()

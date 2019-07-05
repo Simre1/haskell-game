@@ -1,0 +1,112 @@
+{-# LANGUAGE UndecidableInstances #-}
+module Effect.Graphics where
+
+import Import
+
+
+import qualified SDL
+import Data.Sequence
+import Shapes2D
+import Sigma
+
+import Data.IORef
+import Data.Coerce
+import Control.Effect.Reader
+import Data.StateVar
+import Data.Word
+
+data Graphics (m :: * -> *) k where
+  GetGraphicsData :: (GraphicsData -> k) -> Graphics m k
+  Render :: RenderObject -> k -> Graphics m k
+  CreateTexture :: (SDL.Renderer -> IO SDL.Texture) -> (SDL.Texture -> k) -> Graphics m k deriving Functor
+
+instance HFunctor Graphics where
+  hmap _ = coerce
+
+instance Effect Graphics where
+  handle state handler = coerce . fmap (handler . (<$ state))
+
+newtype GraphicsC m a = GraphicsC (ReaderC GraphicsData m a) deriving (Functor, Applicative, Monad, MonadIO)
+
+instance (Carrier sig m, Effect sig, MonadIO m) => Carrier (Graphics :+: sig) (GraphicsC m) where
+  eff = \case
+    (L (GetGraphicsData feedGraphicsData)) -> GraphicsC (ask) >>= feedGraphicsData
+    (L (Render ro k)) -> do
+      ref <- dataRenderObjects <$> GraphicsC ask
+      liftIO $ modifyIORef' ref (:|> ro)
+      k
+    (L (CreateTexture createTex k)) -> do
+      renderer <- dataRenderer <$> GraphicsC ask
+      tex <- liftIO $ createTex renderer
+      k tex
+    a -> eff $ handleCoercible a
+
+data GraphicsData = GraphicsData {dataRenderObjects :: (IORef (Seq RenderObject)), dataRenderer :: SDL.Renderer}
+
+runGraphicsC :: GraphicsData -> GraphicsC m a -> m a
+runGraphicsC ref (GraphicsC reader) = runReaderC reader ref
+
+initGraphicsData :: MonadIO m => SDL.Renderer -> m (GraphicsData)
+initGraphicsData renderer = GraphicsData <$> liftIO (newIORef mempty) <*> pure renderer
+
+getGraphicsData :: (Member Graphics sig, Carrier sig m) => m GraphicsData
+getGraphicsData = send $ GetGraphicsData pure
+
+render :: (Member Graphics sig, Carrier sig m) => RenderObject -> m ()
+render ro = send $ Render ro (pure ())
+
+makeTexture :: (Member Graphics sig, Carrier sig m) => (SDL.Renderer -> IO SDL.Texture) -> m SDL.Texture
+makeTexture f = send $ CreateTexture f pure
+
+
+newRO :: Int -> SDL.Texture -> Maybe (Rectangle Int) -> Maybe (Rectangle Int) -> Double -> Maybe (V2 Int) -> V2 Bool -> RenderObject
+newRO = RenderObject
+
+simpleRO :: Int -> SDL.Texture -> RenderObject
+simpleRO i t = RenderObject i t Nothing Nothing 0 Nothing (pure False)
+
+runGraphics :: (Effect sig, Carrier sig m, MonadIO m) => SDL.Renderer -> Signal (GraphicsC m) a b -> Signal m a b
+runGraphics renderer signal = Signal $ \a -> do
+  graphicsData <- initGraphicsData renderer
+  let makeSig sig = signalSimpleMorph (runGraphicsC graphicsData) $ Signal $ \a -> do
+        (b, cont) <- stepSignal sig a
+        GraphicsData ros ren <- getGraphicsData
+        renderObjects (GraphicsData ros ren)
+        liftIO $ writeIORef ros mempty
+        return (b,cont)
+  stepSignal (makeSig signal) a
+
+
+data RenderObject = RenderObject {drawOrder :: Int, texture :: SDL.Texture, srcRectangle :: Maybe (Rectangle Int), destRectangle :: Maybe (Rectangle Int), rotation :: Double, rotationPoint :: Maybe (V2 Int) , flipOnAxes :: V2 Bool}
+
+
+renderObjects :: MonadIO m => GraphicsData -> m ()
+renderObjects (GraphicsData ref sdlR) = do
+  set <- liftIO $ readIORef ref
+  SDL.rendererRenderTarget sdlR $= Nothing
+  mapM_ r (sortBy (\r1 r2 -> drawOrder r1 `compare` drawOrder r2) set)
+  SDL.present sdlR
+  return ()
+    where r ro = SDL.copyEx sdlR
+           (texture ro)
+           (fmap fromIntegral . transformRectangle <$> srcRectangle ro)
+           (fmap fromIntegral . transformRectangle <$> destRectangle ro)
+           (realToFrac $ rotation ro)
+           (SDL.P . fmap fromIntegral <$> rotationPoint ro)
+           (flipOnAxes ro)
+
+
+transformRectangle :: Rectangle x -> SDL.Rectangle x
+transformRectangle rect = SDL.Rectangle (SDL.P (rectangleAnchor rect)) (rectangleDimensions rect)
+
+rectangle :: (Member Graphics sig, Carrier sig m) => Signal m () RenderObject
+rectangle = Signal $ \_ -> do
+  ren <- fmap (simpleRO 0) $ makeTexture $ \r -> do
+    tex <- SDL.createTexture r SDL.RGB888 SDL.TextureAccessTarget (fromIntegral <$> pure 300)
+    SDL.rendererDrawColor r $= (toEnum <$> SDL.V4 125 125 125 125)
+    SDL.rendererRenderTarget r $= Just tex
+    SDL.drawLine r (fromIntegral <$> pure 0) (fromIntegral <$> (pure 100))
+    return tex
+  return (ren, arr (const ren))
+
+

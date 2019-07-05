@@ -1,0 +1,49 @@
+{-# LANGUAGE TemplateHaskell #-}
+module Effect.Focus
+  ( Focus
+  , runFocus
+  , FocusBox (..)
+  , getFocusBox
+  , modifyFocusBox
+  , setFocusBox
+  , inFocus
+  )
+  where
+
+import Import
+import Shapes2D
+import Data.Coerce
+import Data.IORef
+import Sigma
+--
+-- newtype FocusBox a = FocusBox {focusBoxRectangle :: Rectangle a} deriving Functor
+--
+--
+-- instance HasBounds FocusBox where
+--   getBounds = getBounds . focusBoxRectangle
+--
+--
+-- data Focus (m :: * -> *) k where
+--   GetFocusBox :: Focus m (FocusBox Int)
+--   ModifyFocusBox :: (FocusBox Int -> FocusBox Int) -> Focus m ()
+--
+-- makeSem ''Focus
+--
+-- runFocusE :: (Member (Lift IO) r) => IORef (FocusBox Int) -> Sem (Focus : r) x -> Sem r x
+-- runFocusE ref = interpret $ \case
+--   GetFocusBox -> liftIO $ readIORef ref
+--   ModifyFocusBox f -> liftIO $ modifyIORef ref f
+--
+-- runFocus :: Member (Lift IO) r => FocusBox Int -> Signal (Sem (Focus : r)) a b -> Signal (Sem r) a b
+-- runFocus box signal = Signal $ \a -> do
+--   ref <- liftIO $ newIORef box
+--   stepSignal (signalSimpleMorph (runFocusE ref) signal) a
+--
+-- setFocusBox :: (Member Focus r) => FocusBox Int -> Sem r ()
+-- setFocusBox = modifyFocusBox . const
+--
+-- inFocus :: (Member Focus r) => BoundingBox Int -> Sem r Bool
+-- inFocus bb = boundingBoxCheckIntersection bb . getBounds <$> getFocusBox
+--
+--
+--

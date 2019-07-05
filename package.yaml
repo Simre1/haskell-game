@@ -1,0 +1,81 @@
+name:                gameEngine
+version:             0.1.0.0
+github:              "githubuser/gameEngine"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2019 Author name here"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/gameEngine#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- text
+- bytestring
+- sdl2
+- data-default
+- microlens
+- microlens-th
+- linear
+- StateVar
+- random
+- containers
+- repa
+- colour
+- chiphunk
+- transformers
+- polysemy
+- vector
+- hip
+
+default-extensions:
+  - OverloadedStrings
+  - FlexibleContexts
+  - FlexibleInstances
+  - LambdaCase
+  - ExistentialQuantification
+  - RankNTypes
+  - GADTs
+  - ScopedTypeVariables
+  - TypeOperators
+  - DataKinds
+  - KindSignatures
+  - DeriveFunctor
+  - GeneralizedNewtypeDeriving
+  - MultiParamTypeClasses
+
+library:
+  source-dirs: [src]
+
+executables:
+  gameEngine-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - gameEngine
+
+tests:
+  gameEngine-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - gameEngine

@@ -1,0 +1,16 @@
+resolver: lts-13.27
+
+packages:
+- . 
+
+
+extra-deps: 
+- chiphunk-0.1.0.3
+- vector-space-0.15
+- polysemy-0.5.1.0
+- hip-1.5.3.0
+- sdl2-2.5.0.0
+- first-class-families-0.5.0.0
+- th-abstraction-0.3.1.0
+- unagi-chan-0.4.1.0
+

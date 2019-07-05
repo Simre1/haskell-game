@@ -1,0 +1,2 @@
+module Effect.Input
+  ( ) where
