@@ -1,2 +1,4 @@
 module Effect.Input
-  ( ) where
+  (runSDLEventInput, getKeyState, SDLInput, rawInput) where
+
+import Input.SDL

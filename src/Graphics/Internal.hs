@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Graphics.Internal (module Graphics.TextureBuilder, Graphics, makeTexture, runGraphics, renderTexture, RenderTexture, Camera, cameraPosition, render, cameraUse, cameraModify) where
+module Graphics.Internal (module Graphics.TextureBuilder, Graphics, makeTexture, runGraphics, makeRenderInstruction, RenderInstruction, Camera, cameraPosition, render, cameraUse, cameraModify) where
 
 import qualified SDL
 import Data.Sequence hiding (empty)
@@ -21,6 +21,7 @@ import Control.Monad
 
 import Shapes2D
 import Sigma
+import Graphics.Image
 
 
 data Camera = Camera {_cameraPosition :: Placed Rectangle Int}
@@ -28,20 +29,20 @@ data Camera = Camera {_cameraPosition :: Placed Rectangle Int}
 makeLenses ''Camera
 
 data GraphicsData = GraphicsData
-  { dataRenderObjects :: IORef (Seq RenderTexture)
+  { dataRenderObjects :: IORef (Seq RenderInstruction)
   , dataRenderer :: SDL.Renderer
   , dataCamera :: IORef Camera
   }
 
-data RenderTexture = RenderTexture
+data RenderInstruction = RenderInstruction
   { zIndex :: Int
   , ctTexture :: SDL.Texture
   , ctSourceRect :: Maybe (Placed Rectangle Int)
   , ctDestinationRectangle :: Maybe (Placed Rectangle Int)
   }
 
-renderTexture :: Int -> Texture a -> Maybe (Placed Rectangle Int) -> Maybe (Placed Rectangle Int) -> RenderTexture
-renderTexture i (Texture _ sdlTexture) = RenderTexture i sdlTexture
+makeRenderInstruction :: Int -> Texture a -> Maybe (Placed Rectangle Int) -> Maybe (Placed Rectangle Int) -> RenderInstruction
+makeRenderInstruction i (Texture _ sdlTexture) = RenderInstruction i sdlTexture
 
 initGraphicsData :: MonadIO m => Camera -> SDL.Renderer -> m GraphicsData
 initGraphicsData camera renderer = liftIO $ GraphicsData <$> newIORef mempty
@@ -50,7 +51,7 @@ initGraphicsData camera renderer = liftIO $ GraphicsData <$> newIORef mempty
 
 
 data Graphics (m :: * -> *) k where
-  Render :: RenderTexture -> Graphics m ()
+  Render :: RenderInstruction -> Graphics m ()
   MakeTexture :: TextureBuilder (Texture a) -> Graphics m (Texture a)
   CameraUse :: SimpleGetter Camera a -> Graphics m a
   CameraModify :: ASetter Camera Camera a b -> (a -> b) -> Graphics m ()
@@ -92,7 +93,7 @@ runGraphics renderer signal = Signal $ \a -> do
         pure (b,makeSig cont)
   stepSignal (signalSimpleMorph (runGraphicsE (\newAction -> modifyIORef delayedTextureActions (>>newAction)) graphicsData) $ makeSig signal) a
     where
-      defCamera = Camera $ Placed (V2 0 0) $ newRectangle (V2 800 600)
+      defCamera = Camera $ Placed (V2 0 0) $ newRectangle 800 600
       renderObjects renderer textures camera = do
         SDL.rendererRenderTarget renderer $= Nothing
         SDL.rendererDrawColor renderer $= SDL.V4 maxBound maxBound maxBound maxBound
@@ -100,12 +101,12 @@ runGraphics renderer signal = Signal $ \a -> do
         liftIO $ mapM_ runRender (sortBy (\r1 r2 -> zIndex r1 `compare` zIndex r2) textures)
         SDL.present renderer
         pure ()
-          where runRender (RenderTexture _ texture srcRect destRect) =
-                  let newDestRect = destRect <&> over placedPosition (adjustPointForRender camera)
+          where runRender (RenderInstruction _ texture srcRect destRect) =
+                  let newDestRect = destRect <&> over placedPosition (adjustPointForRender camera) . over (placedShape . rectangleHeight) negate
                   in do
                     SDL.copyEx renderer texture (transformRectangle<$>srcRect) (transformRectangle<$>newDestRect) 0 Nothing (V2 False True)
 
 
 adjustPointForRender :: Camera -> V2 Int -> V2 Int
-adjustPointForRender (Camera (Placed (V2 cX cY) (Rectangle (V2 _ rY)))) (V2 x y) =
+adjustPointForRender (Camera (Placed (V2 cX cY) (Rectangle _ rY))) (V2 x y) =
   V2 (x - cX) (rY - y + cY)

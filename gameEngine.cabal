@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e21a57614865530b8062ea47f367c0c13cb7c231a23c4b5f6a2d1c28e45aa1bb
+-- hash: dcf4a80df1932d00768eb0181f96085a5f6acc96c5ee9de6b4b85864a17da980
 
 name:           gameEngine
 version:        0.1.0.0
@@ -15,6 +15,7 @@ author:         Author name here
 maintainer:     example@example.com
 copyright:      2019 Author name here
 license:        BSD3
+license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
@@ -30,10 +31,12 @@ library
       Effect.Input
       Effect.Physics
       Effect.Store
+      Graphics.Image
       Graphics.Internal
       Graphics.TextureBuilder
       Input.SDL
       Physics.LowLevel
+      Pictolib.Image
       Shapes2D
       Sigma
       Sigma.Framerate
@@ -47,21 +50,24 @@ library
       src
   default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses
   build-depends:
-      StateVar
+      JuicyPixels
+    , StateVar
     , base >=4.7 && <5
     , bytestring
     , chiphunk
     , colour
     , containers
     , data-default
-    , hip
     , linear
+    , massiv
+    , massiv-io
     , microlens
     , microlens-th
     , polysemy
     , random
     , repa
     , sdl2
+    , storable-tuple
     , text
     , transformers
     , vector
@@ -70,13 +76,16 @@ library
 executable gameEngine-exe
   main-is: Main.hs
   other-modules:
+      Bullets
+      Player
       Paths_gameEngine
   hs-source-dirs:
       app
   default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      StateVar
+      JuicyPixels
+    , StateVar
     , base >=4.7 && <5
     , bytestring
     , chiphunk
@@ -84,14 +93,16 @@ executable gameEngine-exe
     , containers
     , data-default
     , gameEngine
-    , hip
     , linear
+    , massiv
+    , massiv-io
     , microlens
     , microlens-th
     , polysemy
     , random
     , repa
     , sdl2
+    , storable-tuple
     , text
     , transformers
     , vector
@@ -105,9 +116,10 @@ test-suite gameEngine-test
   hs-source-dirs:
       test
   default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -fplugin=Polysemy.Plugin
   build-depends:
-      StateVar
+      JuicyPixels
+    , StateVar
     , base >=4.7 && <5
     , bytestring
     , chiphunk
@@ -115,14 +127,16 @@ test-suite gameEngine-test
     , containers
     , data-default
     , gameEngine
-    , hip
     , linear
+    , massiv
+    , massiv-io
     , microlens
     , microlens-th
     , polysemy
     , random
     , repa
     , sdl2
+    , storable-tuple
     , text
     , transformers
     , vector

@@ -1,96 +1,26 @@
 module Main where
 
-main = print "Hello"
 
---
--- import Import
--- import Effect
--- import Effect.Store
--- import Effect.Input
--- import Sigma
--- import Control.Concurrent
--- import qualified SDL
--- import Effect.Graphics
--- import Data.IORef
--- import Shapes2D
--- import Data.List (elem, filter, null)
--- import Effect.PhysicsLow
--- import Graphics.Effect
--- import Control.Concurrent
--- import Graphics.Image
--- import qualified Chiphunk.Low as C
---
--- main :: IO ()
--- main = do
---   SDL.initializeAll
---   window <- SDL.createWindow "My Awesome Game" SDL.defaultWindow
---   renderer <- SDL.createRenderer window 0 SDL.defaultRenderer
---   close <- newIORef False
---   forkIO $ threadDelay 10000000 >> writeIORef close True
---
---   reactimateUntilTrue . limitFramerate 60 . runLiftedEffect . runGraphics renderer . runPhysics (1/60) . runSDLEventInput $
---
---     physics >>> physicsRenderAction >>>
---       arrM (const $ liftIO $ readIORef close)
---
---   SDL.quit
---
--- --
--- -- --
--- -- physicsRenderAction :: Member Graphics r => Signal (Sem r) (V2 Double) ()
--- -- physicsRenderAction = withInitialization (makeTexture texture) $ \tex ->
--- --   arrM (\pos -> render $ renderTexture 0 tex Nothing (Just $ Placed (round <$> pos) (Rectangle $ V2 100 100)))
--- --
--- --   where
--- --     texture :: TextureBuilder (Texture Static)
--- --     texture = do
--- --       tex <- createStaticTexture (V2 1 1)
--- --       updateStaticTexture2 tex Nothing [[10,17,127,255]]
--- --       pure tex
---
--- physicsRenderAction :: (Member (Lift IO) r, Member Graphics r) => Signal (Sem r) (V2 Double) ()
--- physicsRenderAction = withInitialization (makeTexture texture) $ \tex ->
---   arrM (\pos -> render (renderTexture 0 tex Nothing (Just $ Placed (round <$> pos) (Rectangle $ V2 100 100))))
---
---   where
---     texture :: TextureBuilder (Texture Static)
---     texture = do
---       tex <- createStaticTexture (V2 100 100)
---       updateStaticTexture tex Nothing $ makeImageR VU (100,100) (\(i, j) -> PixelRGBA 255 100 100 255 :: Pixel RGBA Word8)
---       pure tex
---
---
---   -- do
---   -- withSettings (rendererColour $ white `withOpacity` 1) $ fullScreen
---   -- withSettings (rendererColour $ black `withOpacity` 1) $ do
---   --   rectangle (V2 0 0) $ newRectangle (V2 800 100)
---   -- withSettings (rendererColour $ navy `withOpacity` 1) $ do
---   --   rectangle (floor <$> (pos - (V2 25 25))) $ newRectangle (V2 50 50)
---
--- physics :: Member Physics r => Signal (Sem r) () (V2 Double)
--- physics = buildSignal $ \_ -> do
---   ground <- createBody StaticBody
---   groundShape <- createShape ground $ SegmentShape (V2 0 0) (V2 800 0) 100
---
---   soSet (V2 0 0) $ bodyPosition ground
---
---   addBodyToSpace ground
---   addShapeToSpace groundShape
---
---   soSet 0.5 $ shapeElasticity groundShape
---
---
---   rectangle <- createBody $ DynamicBody 100 $ C.momentForBox 100 100 100
---   rectangleShape <- createShape rectangle $ BoxShape 100 100 1
---
---   addBodyToSpace rectangle
---   addShapeToSpace rectangleShape
---   soSet 0.5 $ shapeElasticity rectangleShape
---
---
---   soSet (V2 400 1200) $ bodyPosition rectangle
---
---   soSet (V2 0 (-400)) spaceGravity
---   pos <- soGet $ bodyPosition rectangle
---
---   pure (pos, arrM . const $ soGet $ bodyPosition rectangle)
+import SDL (quit, initializeAll, createWindow, defaultWindow, createRenderer, defaultRenderer)
+import Data.Text (pack)
+import Polysemy (runM)
+
+
+import Sigma (signalSimpleMorph)
+import Sigma.Reactimate (reactimate)
+import Sigma.Framerate (limitFramerate)
+
+import Input.SDL (runSDLEventInput)
+import Effect.Graphics (runGraphics)
+import Effect.Physics (runPhysics)
+
+import Player (player)
+
+main :: IO ()
+main = do
+  initializeAll
+  w <- createWindow (pack "Space Invaders") defaultWindow
+  r <- createRenderer w 0 defaultRenderer
+  reactimate $ limitFramerate 60 . signalSimpleMorph runM . runSDLEventInput . runGraphics r . runPhysics 60 $
+    player
+  quit

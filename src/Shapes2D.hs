@@ -7,7 +7,11 @@ module Shapes2D
   , circleRadius
   , Rectangle(..)
   , newRectangle
-  , rectangleDimensions
+  , rectangleWidth
+  , rectangleHeight
+  , Line(..)
+  , lineStart
+  , lineEnd
   , Placed(..)
   , placedPosition
   , placedShape
@@ -25,11 +29,17 @@ makeLenses ''Circle
 
 newCircle = Circle
 
-data Rectangle x = Rectangle {_rectangleDimensions :: V2 x} deriving (Eq, Functor, Show)
+data Rectangle x = Rectangle {_rectangleWidth :: x, _rectangleHeight :: x} deriving (Eq, Functor, Show)
 
 newRectangle = Rectangle
 
 makeLenses ''Rectangle
+
+data Line x = Line {_lineStart :: V2 x, _lineEnd :: V2 x} deriving (Eq, Functor, Show)
+
+newLine = Line
+
+makeLenses ''Line
 
 data Placed b a = Placed {_placedPosition :: (V2 a), _placedShape :: (b a)} deriving (Eq, Functor, Show)
 

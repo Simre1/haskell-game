@@ -37,7 +37,10 @@ dependencies:
 - transformers
 - polysemy
 - vector
-- hip
+- JuicyPixels
+- massiv
+- massiv-io
+- storable-tuple
 
 default-extensions:
   - OverloadedStrings
@@ -77,5 +80,6 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -fplugin=Polysemy.Plugin
     dependencies:
     - gameEngine

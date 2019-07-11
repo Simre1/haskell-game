@@ -5,11 +5,14 @@ import qualified SDL
 
 import Linear.V2
 import Linear.V4
+import Control.Exception
+import Data.Text (Text, unpack)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Reader
 import Data.StateVar
 import Shapes2D
+import Data.Either
 import Foreign.C
 import Foreign.Storable
 import Foreign.Ptr
@@ -17,8 +20,7 @@ import Foreign.Marshal.Utils
 import Data.Word
 import Data.Colour
 import Data.Colour.SRGB
-import Graphics.Image as IMG
-import qualified Graphics.Image.Interface as IMG
+import Control.Monad.IO.Class
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
@@ -26,18 +28,42 @@ import Data.ByteString.Unsafe
 import Lens.Micro hiding (over)
 import Lens.Micro.Extras
 import Data.Maybe
+import Data.Vector.Storable as V hiding (modify)
+import Debug.Trace
 
-type PixelToBytes = (Word8, Word8, Word8, Word8) -> B.Builder
+import Data.Massiv.Array as M hiding (modify)
+import Data.Massiv.Array.Manifest as M
+import Data.Massiv.Core.Index as M
+
+import Graphics.Image
+
+type PixelToBytes = Pixel -> B.Builder
 
 newtype TextureBuilder a = TextureBuilder {getBuilderStack :: ReaderT (SDL.Renderer, SDL.PixelFormat, PixelToBytes) (StateT (IO ()) IO) a} deriving (Functor, Applicative, Monad)
-
-
 
 data Texture a = Texture a SDL.Texture
 
 data Streaming = Streaming
 data Static = Static
 data Target = Target
+data Any = Any
+
+class ToAnyTexture a where
+  toAnyTexture :: Texture a -> Texture Any
+
+instance ToAnyTexture Any where
+  toAnyTexture = id
+
+instance ToAnyTexture Static where
+  toAnyTexture (Texture _ texture) = Texture Any texture
+
+
+instance ToAnyTexture Streaming where
+  toAnyTexture (Texture _ texture) = Texture Any texture
+
+
+instance ToAnyTexture Target where
+  toAnyTexture (Texture _ texture) = Texture Any texture
 
 runTextureBuilder :: SDL.Renderer -> SDL.PixelFormat -> PixelToBytes -> TextureBuilder (Texture a) -> IO (Texture a, IO ())
 runTextureBuilder renderer format pixelToBytes textureBuilder = do
@@ -53,21 +79,21 @@ withAll action = TextureBuilder . ReaderT $ \(renderer, pixelFormat, pixelToByte
 delayAction :: IO () -> StateT (IO ()) IO ()
 delayAction io = modify (>>io)
 
-createStaticTexture :: V2 Int -> TextureBuilder (Texture Static)
-createStaticTexture (V2 x y) = withAll $ \renderer format _ -> do
+createStaticTexture :: Rectangle Int -> TextureBuilder (Texture Static)
+createStaticTexture (Rectangle x y) = withAll $ \renderer format _ -> do
   tex <- SDL.createTexture renderer format SDL.TextureAccessStatic (toEnum <$> V2 x y)
   SDL.textureBlendMode tex $= SDL.BlendAlphaBlend
   pure $ Texture Static tex
 
 
-createStreamingTexture :: V2 Int -> TextureBuilder (Texture Streaming)
-createStreamingTexture (V2 x y) = withAll $ \renderer format _ -> do
+createStreamingTexture :: Rectangle Int -> TextureBuilder (Texture Streaming)
+createStreamingTexture (Rectangle x y) = withAll $ \renderer format _ -> do
   tex <- SDL.createTexture renderer format SDL.TextureAccessStreaming (toEnum <$> V2 x y)
   SDL.textureBlendMode tex $= SDL.BlendAlphaBlend
   pure $ Texture Streaming tex
 
-createTargetTexture :: V2 Int -> TextureBuilder (Texture Target)
-createTargetTexture (V2 x y) = withAll $ \renderer format _ -> do
+createTargetTexture :: Rectangle Int -> TextureBuilder (Texture Target)
+createTargetTexture (Rectangle x y) = withAll $ \renderer format _ -> do
   tex <- SDL.createTexture renderer format SDL.TextureAccessTarget (toEnum <$> V2 x y)
   SDL.textureBlendMode tex $= SDL.BlendAlphaBlend
   pure $ Texture Target tex
@@ -84,16 +110,40 @@ filledRectangle dstRectangle colour (Texture _ destTexture) = withRenderer $ \re
   SDL.fillRect renderer (transformRectangle <$> dstRectangle)
 
 
-updateStaticTexture :: MArray arr RGBA Word8 => Texture Static -> Maybe (Placed Rectangle Int) -> Image arr RGBA Word8 -> TextureBuilder ()
+textureSelectedAreaDimensions :: SDL.Texture -> Maybe (Placed Rectangle Int) -> IO (Int, Int)
+textureSelectedAreaDimensions texture rect = case (view placedShape <$> rect) of
+  Just (Rectangle x y) -> pure (x, y)
+  Nothing -> do
+    textureInfo <- SDL.queryTexture texture
+    pure (fromEnum $ SDL.textureWidth textureInfo, fromEnum $ SDL.textureHeight textureInfo)
+
+
+transformColour :: AlphaColour Double -> V4 Word8
+transformColour c = let (RGB r g b) = toSRGB24 (c `over` mempty)
+                            in SDL.V4 r g b (round $ 100 * alphaChannel c)
+
+transformRectangle :: Placed Rectangle Int -> SDL.Rectangle CInt
+transformRectangle (Placed pos (Rectangle width height)) =
+  SDL.Rectangle (SDL.P $ toEnum <$> pos) (toEnum <$> V2 width height)
+
+loadImage :: Text -> TextureBuilder (Either SomeException Image)
+loadImage = withRenderer . const . liftIO . readImage
+
+updateStaticTexture :: Texture Static -> Maybe (Placed Rectangle Int) -> Image -> TextureBuilder ()
 updateStaticTexture (Texture _ texture) destRect image = withAll $ \renderer _ pixelToBytes -> delayAction $ do
   (areaX, areaY) <- textureSelectedAreaDimensions texture destRect
   let pixels = imageWithFixedSizeToByteString pixelToBytes (areaX, areaY) image
   SDL.updateTexture texture (transformRectangle <$> destRect) pixels (toEnum $ areaX * 4)
   pure ()
-  where byteString pixelToBytes = BL.toStrict $ B.toLazyByteString $ IMG.foldl (accume pixelToBytes) mempty image
-        accume pixelToBytes builder pixel = builder <> (\pixel -> pixelToBytes pixel) (IMG.toComponents pixel)
 
-updateStreamingTexture :: MArray arr RGBA Word8 => Texture Streaming -> Maybe (Placed Rectangle Int) -> Image arr RGBA Word8 -> TextureBuilder ()
+fourBytes :: BS.ByteString
+fourBytes = BL.toStrict $ B.toLazyByteString $
+     (B.word8 0 <> B.word8 0 <> B.word8 0 <> B.word8 255)--
+  <> (B.word8 80 <> B.word8 80 <> B.word8 80 <> B.word8 255)
+  <> (B.word8 160 <> B.word8 160 <> B.word8 160 <> B.word8 255)
+  <> (B.word8 255 <> B.word8 255 <> B.word8 255 <> B.word8 255)
+
+updateStreamingTexture :: Texture Streaming -> Maybe (Placed Rectangle Int) -> Image -> TextureBuilder ()
 updateStreamingTexture (Texture _ texture) destRect image = withAll $ \renderer _ pixelToBytes -> delayAction $ do
   (areaX, areaY) <- textureSelectedAreaDimensions texture destRect
   let pixels = imageWithFixedSizeToByteString pixelToBytes (areaX, areaY) image
@@ -103,9 +153,9 @@ updateStreamingTexture (Texture _ texture) destRect image = withAll $ \renderer 
     copyBytes newPtr pixelBytes (4 * areaX * areaY)
     SDL.unlockTexture texture
 
-imageWithFixedSizeToByteString :: MArray arr RGBA Word8 => PixelToBytes -> (Int, Int) -> Image arr RGBA Word8 -> BS.ByteString
+imageWithFixedSizeToByteString :: PixelToBytes -> (Int, Int) -> Image -> BS.ByteString
 imageWithFixedSizeToByteString pixelToBytes (width, height) image =
-  let (imageWidth, imageHeight) = dims image
+  let (Sz2 imageWidth imageHeight) = size image
   in if (imageWidth == width && imageHeight == height)
       then imageToByteString pixelToBytes image
       else BL.toStrict $ B.toLazyByteString $ appendBuilderNTimes (width * height) (pixelToBytes (0,0,0,255))
@@ -114,21 +164,14 @@ imageWithFixedSizeToByteString pixelToBytes (width, height) image =
 
 -- Transformations
 
-textureSelectedAreaDimensions :: SDL.Texture -> Maybe (Placed Rectangle Int) -> IO (Int, Int)
-textureSelectedAreaDimensions texture rect = case (view (placedShape . rectangleDimensions) <$> rect) of
-  Just (V2 x y) -> pure (x, y)
-  Nothing -> do
-    textureInfo <- SDL.queryTexture texture
-    pure (fromEnum $ SDL.textureWidth textureInfo, fromEnum $ SDL.textureHeight textureInfo)
-
-imageToByteString :: MArray arr RGBA Word8 => PixelToBytes -> Image arr RGBA Word8 -> BS.ByteString
-imageToByteString pixelToBytes image = BL.toStrict $ B.toLazyByteString $ IMG.foldl accume mempty image
-  where accume builder pixel = builder <> pixelToBytes (IMG.toComponents pixel)
-
-transformColour :: AlphaColour Double -> V4 Word8
-transformColour c = let (RGB r g b) = toSRGB24 (c `over` mempty)
-                            in SDL.V4 r g b (round $ 100 * alphaChannel c)
-
-transformRectangle :: Placed Rectangle Int -> SDL.Rectangle CInt
-transformRectangle (Placed pos (Rectangle dimensions)) =
-  SDL.Rectangle (SDL.P $ toEnum <$> pos) (toEnum <$> dimensions)
+imageToByteString :: PixelToBytes -> Image -> BS.ByteString
+imageToByteString pixelToBytes image = BL.toStrict $ B.toLazyByteString $
+  let
+    (Sz2 width height) = size image
+  in buildByteString image (width, height) (0,0)
+  where
+    buildByteString image (maxWidth,maxHeight) (currentX, currentY)
+      | maxHeight == currentY = mempty
+      | maxWidth == currentX = buildByteString image (maxWidth, maxHeight) (0, succ currentY)
+      | otherwise = pixelToBytes (image M.! (M.Ix2 currentX currentY)) <>
+                      buildByteString image (maxWidth,maxHeight) (succ currentX, currentY)

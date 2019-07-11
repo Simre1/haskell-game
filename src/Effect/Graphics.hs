@@ -4,3 +4,4 @@ module Effect.Graphics
   ) where
 
 import Graphics.Internal as X
+import Graphics.Image as X
