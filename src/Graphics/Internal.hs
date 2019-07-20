@@ -1,6 +1,26 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Graphics.Internal (module Graphics.TextureBuilder, Graphics, makeTexture, runGraphics, makeRenderInstruction, RenderInstruction, Camera, cameraPosition, render, cameraUse, cameraModify) where
+module Graphics.Internal
+  (module Graphics.TextureBuilder
+  , Graphics
+  , makeTexture
+  , runGraphics
+  , makeRenderInstruction
+  , defaultRenderInstruction
+  , RenderInstruction
+  , Camera
+  , cameraArea
+  , render
+  , getCamera
+  , modifyCamera
+  , riZIndex
+  , riTexture
+  , riTextureArea
+  , riScreenArea
+  , riRotation
+  , riRotationPoint
+  , riFlip
+  ) where
 
 import qualified SDL
 import Data.Sequence hiding (empty)
@@ -18,13 +38,14 @@ import Data.ByteString.Builder as B
 import Control.Monad.IO.Class
 import Polysemy
 import Control.Monad
+import Foreign.C.Types (CDouble(CDouble))
 
 import Shapes2D
 import Sigma
 import Graphics.Image
 
 
-data Camera = Camera {_cameraPosition :: Placed Rectangle Int}
+data Camera = Camera {_cameraArea :: Placed Rectangle Int}
 
 makeLenses ''Camera
 
@@ -35,14 +56,27 @@ data GraphicsData = GraphicsData
   }
 
 data RenderInstruction = RenderInstruction
-  { zIndex :: Int
-  , ctTexture :: SDL.Texture
-  , ctSourceRect :: Maybe (Placed Rectangle Int)
-  , ctDestinationRectangle :: Maybe (Placed Rectangle Int)
+  { _riZIndex :: Int
+  , _riTexture' :: SDL.Texture
+  , _riTextureArea :: Maybe (Placed Rectangle Int)
+  , _riScreenArea :: Maybe (Placed Rectangle Int)
+  , _riRotation :: Double
+  , _riRotationPoint :: Maybe (V2 Int)
+  , _riFlip :: V2 Bool
   }
 
-makeRenderInstruction :: Int -> Texture a -> Maybe (Placed Rectangle Int) -> Maybe (Placed Rectangle Int) -> RenderInstruction
+makeLenses ''RenderInstruction
+
+riTexture :: Lens' RenderInstruction (Texture Any)
+riTexture f = riTexture' (fmap fromTexture . f . toTexture)
+  where toTexture sdlTexture = Texture Any sdlTexture
+        fromTexture (Texture _ sdlTexture) = sdlTexture
+
+makeRenderInstruction :: Int -> Texture a -> Maybe (Placed Rectangle Int) -> Maybe (Placed Rectangle Int) -> Double -> Maybe (V2 Int) -> V2 Bool -> RenderInstruction
 makeRenderInstruction i (Texture _ sdlTexture) = RenderInstruction i sdlTexture
+
+defaultRenderInstruction :: Texture a -> RenderInstruction
+defaultRenderInstruction texture = makeRenderInstruction 0 texture Nothing Nothing 0 Nothing (V2 False False)
 
 initGraphicsData :: MonadIO m => Camera -> SDL.Renderer -> m GraphicsData
 initGraphicsData camera renderer = liftIO $ GraphicsData <$> newIORef mempty
@@ -53,8 +87,8 @@ initGraphicsData camera renderer = liftIO $ GraphicsData <$> newIORef mempty
 data Graphics (m :: * -> *) k where
   Render :: RenderInstruction -> Graphics m ()
   MakeTexture :: TextureBuilder (Texture a) -> Graphics m (Texture a)
-  CameraUse :: SimpleGetter Camera a -> Graphics m a
-  CameraModify :: ASetter Camera Camera a b -> (a -> b) -> Graphics m ()
+  GetCamera :: Graphics m Camera
+  ModifyCamera :: (Camera -> Camera) -> Graphics m ()
 
 
 makeSem ''Graphics
@@ -62,8 +96,8 @@ makeSem ''Graphics
 runGraphicsE :: Member (Lift IO) r => (IO () -> IO ()) -> GraphicsData -> Sem (Graphics : r) a -> Sem r a
 runGraphicsE addTextureAction gd = interpret $ \case
   (Render renderTexture) -> liftIO $ modifyIORef' (dataRenderObjects gd) (:|> renderTexture)
-  (CameraUse getter) -> liftIO . fmap (view getter) $ readIORef (dataCamera gd)
-  (CameraModify setter f) -> liftIO $ modifyIORef (dataCamera gd) (over setter f)
+  GetCamera -> liftIO $ readIORef (dataCamera gd)
+  (ModifyCamera modifyCam) -> liftIO $ modifyIORef (dataCamera gd) modifyCam
   (MakeTexture textureBuilder) -> liftIO $ do
     preferredFormat <- findFormat
     (texture, textureAction) <- runTextureBuilder (dataRenderer gd) preferredFormat (rgbaToPreferredFormat preferredFormat) textureBuilder
@@ -97,14 +131,15 @@ runGraphics renderer signal = Signal $ \a -> do
       renderObjects renderer textures camera = do
         SDL.rendererRenderTarget renderer $= Nothing
         SDL.rendererDrawColor renderer $= SDL.V4 maxBound maxBound maxBound maxBound
+        SDL.rendererLogicalSize renderer $= pure (toEnum <$> (camera ^. cameraArea . placedShape . rectangleDimensions))
         SDL.clear renderer
-        liftIO $ mapM_ runRender (sortBy (\r1 r2 -> zIndex r1 `compare` zIndex r2) textures)
+        liftIO $ mapM_ runRender (sortBy (\r1 r2 -> _riZIndex r1 `compare` _riZIndex r2) textures)
         SDL.present renderer
         pure ()
-          where runRender (RenderInstruction _ texture srcRect destRect) =
+          where runRender (RenderInstruction _ texture srcRect destRect rotationDegrees rotationPoint (V2 flipX flipY)) =
                   let newDestRect = destRect <&> over placedPosition (adjustPointForRender camera) . over (placedShape . rectangleHeight) negate
                   in do
-                    SDL.copyEx renderer texture (transformRectangle<$>srcRect) (transformRectangle<$>newDestRect) 0 Nothing (V2 False True)
+                    SDL.copyEx renderer texture (transformRectangle<$>srcRect) (transformRectangle<$>newDestRect) (CDouble rotationDegrees) (SDL.P . fmap toEnum <$> rotationPoint) (V2 flipX (not flipY))
 
 
 adjustPointForRender :: Camera -> V2 Int -> V2 Int

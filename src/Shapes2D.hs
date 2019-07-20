@@ -9,6 +9,7 @@ module Shapes2D
   , newRectangle
   , rectangleWidth
   , rectangleHeight
+  , rectangleDimensions
   , Line(..)
   , lineStart
   , lineEnd
@@ -34,6 +35,12 @@ data Rectangle x = Rectangle {_rectangleWidth :: x, _rectangleHeight :: x} deriv
 newRectangle = Rectangle
 
 makeLenses ''Rectangle
+
+rectangleDimensions :: Lens' (Rectangle x) (V2 x)
+rectangleDimensions apply rectangle =
+  (\(V2 newWidth newHeight) -> rectangle{_rectangleWidth=newWidth, _rectangleHeight=newHeight}) <$>
+    apply (V2 (_rectangleWidth rectangle ) (_rectangleHeight rectangle))
+
 
 data Line x = Line {_lineStart :: V2 x, _lineEnd :: V2 x} deriving (Eq, Functor, Show)
 

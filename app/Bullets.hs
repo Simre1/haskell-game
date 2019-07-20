@@ -7,6 +7,8 @@ import Data.Functor ((<&>))
 import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.Massiv.Array as M
 import Graphics.ColorSpace
+import Data.Function ((&))
+import Lens.Micro ((.~))
 
 import Shapes2D (Placed(Placed), Rectangle(Rectangle), Circle(Circle))
 import Sigma.Signal (Signal, feedback, buildSignal, withInitialization, arrM, stepSignal)
@@ -38,6 +40,9 @@ import Effect.Graphics
   , createStaticTexture
   , updateStaticTexture
   , toAnyTexture
+  , defaultRenderInstruction
+  , riZIndex
+  , riScreenArea
   )
 
 data BulletType = Straight
@@ -56,7 +61,9 @@ manageBullets zIndex = feedback [] $
   where
     renderBullets :: Member Graphics r => (V2 Double, Texture Any) -> Sem r ()
     renderBullets (pos,texture) =
-          render $ makeRenderInstruction zIndex texture Nothing (pure $ Placed (fmap round pos - V2 5 5) $ Rectangle 10 10)
+          render $ defaultRenderInstruction texture &
+                    riZIndex .~ zIndex &
+                    riScreenArea .~ (pure $ Placed (fmap round pos - V2 5 5) $ Rectangle 10 10)
 
 isInside :: (Ord x, Num x) => V2 x -> Placed Rectangle x -> Bool
 isInside (V2 x y) (Placed (V2 minX minY) (Rectangle areaX areaY)) =

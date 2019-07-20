@@ -1,4 +1,5 @@
-module Graphics.TextureBuilder where
+module Graphics.TextureBuilder
+  where
 
 import Prelude
 import qualified SDL
@@ -110,22 +111,6 @@ filledRectangle dstRectangle colour (Texture _ destTexture) = withRenderer $ \re
   SDL.fillRect renderer (transformRectangle <$> dstRectangle)
 
 
-textureSelectedAreaDimensions :: SDL.Texture -> Maybe (Placed Rectangle Int) -> IO (Int, Int)
-textureSelectedAreaDimensions texture rect = case (view placedShape <$> rect) of
-  Just (Rectangle x y) -> pure (x, y)
-  Nothing -> do
-    textureInfo <- SDL.queryTexture texture
-    pure (fromEnum $ SDL.textureWidth textureInfo, fromEnum $ SDL.textureHeight textureInfo)
-
-
-transformColour :: AlphaColour Double -> V4 Word8
-transformColour c = let (RGB r g b) = toSRGB24 (c `over` mempty)
-                            in SDL.V4 r g b (round $ 100 * alphaChannel c)
-
-transformRectangle :: Placed Rectangle Int -> SDL.Rectangle CInt
-transformRectangle (Placed pos (Rectangle width height)) =
-  SDL.Rectangle (SDL.P $ toEnum <$> pos) (toEnum <$> V2 width height)
-
 loadImage :: Text -> TextureBuilder (Either SomeException Image)
 loadImage = withRenderer . const . liftIO . readImage
 
@@ -135,13 +120,6 @@ updateStaticTexture (Texture _ texture) destRect image = withAll $ \renderer _ p
   let pixels = imageWithFixedSizeToByteString pixelToBytes (areaX, areaY) image
   SDL.updateTexture texture (transformRectangle <$> destRect) pixels (toEnum $ areaX * 4)
   pure ()
-
-fourBytes :: BS.ByteString
-fourBytes = BL.toStrict $ B.toLazyByteString $
-     (B.word8 0 <> B.word8 0 <> B.word8 0 <> B.word8 255)--
-  <> (B.word8 80 <> B.word8 80 <> B.word8 80 <> B.word8 255)
-  <> (B.word8 160 <> B.word8 160 <> B.word8 160 <> B.word8 255)
-  <> (B.word8 255 <> B.word8 255 <> B.word8 255 <> B.word8 255)
 
 updateStreamingTexture :: Texture Streaming -> Maybe (Placed Rectangle Int) -> Image -> TextureBuilder ()
 updateStreamingTexture (Texture _ texture) destRect image = withAll $ \renderer _ pixelToBytes -> delayAction $ do
@@ -162,7 +140,12 @@ imageWithFixedSizeToByteString pixelToBytes (width, height) image =
   where appendBuilderNTimes 0 builder = builder
         appendBuilderNTimes n builder = builder <> appendBuilderNTimes (n-1) builder
 
--- Transformations
+textureSelectedAreaDimensions :: SDL.Texture -> Maybe (Placed Rectangle Int) -> IO (Int, Int)
+textureSelectedAreaDimensions texture rect = case (view placedShape <$> rect) of
+  Just (Rectangle x y) -> pure (x, y)
+  Nothing -> do
+    textureInfo <- SDL.queryTexture texture
+    pure (fromEnum $ SDL.textureWidth textureInfo, fromEnum $ SDL.textureHeight textureInfo)
 
 imageToByteString :: PixelToBytes -> Image -> BS.ByteString
 imageToByteString pixelToBytes image = BL.toStrict $ B.toLazyByteString $
@@ -175,3 +158,14 @@ imageToByteString pixelToBytes image = BL.toStrict $ B.toLazyByteString $
       | maxWidth == currentX = buildByteString image (maxWidth, maxHeight) (0, succ currentY)
       | otherwise = pixelToBytes (image M.! (M.Ix2 currentX currentY)) <>
                       buildByteString image (maxWidth,maxHeight) (succ currentX, currentY)
+
+-- Transformations
+
+
+transformColour :: AlphaColour Double -> V4 Word8
+transformColour c = let (RGB r g b) = toSRGB24 (c `over` mempty)
+                            in SDL.V4 r g b (round $ 100 * alphaChannel c)
+
+transformRectangle :: Placed Rectangle Int -> SDL.Rectangle CInt
+transformRectangle (Placed pos (Rectangle width height)) =
+  SDL.Rectangle (SDL.P $ toEnum <$> pos) (toEnum <$> V2 width height)

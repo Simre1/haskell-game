@@ -1,26 +1,30 @@
 module Main where
 
 
-import SDL (quit, initializeAll, createWindow, defaultWindow, createRenderer, defaultRenderer)
+import SDL (quit, initializeAll, createWindow, defaultWindow, createRenderer, defaultRenderer, windowResizable)
 import Data.Text (pack)
 import Polysemy (runM)
+import Lens.Micro ((.~))
 
-
-import Sigma (signalSimpleMorph)
+import Sigma (signalSimpleMorph, withInitialization)
 import Sigma.Reactimate (reactimate)
 import Sigma.Framerate (limitFramerate)
 
+import Shapes2D
 import Input.SDL (runSDLEventInput)
-import Effect.Graphics (runGraphics)
+import Effect.Graphics (runGraphics, cameraArea, modifyCamera)
 import Effect.Physics (runPhysics)
+
+import Lens.Micro (sets)
 
 import Player (player)
 
 main :: IO ()
 main = do
   initializeAll
-  w <- createWindow (pack "Space Invaders") defaultWindow
+  w <- createWindow (pack "Space Invaders") (defaultWindow {windowResizable = True})
   r <- createRenderer w 0 defaultRenderer
   reactimate $ limitFramerate 60 . signalSimpleMorph runM . runSDLEventInput . runGraphics r . runPhysics 60 $
-    player
+    withInitialization (modifyCamera $ cameraArea . placedShape . rectangleDimensions .~ V2 480 480) . const $
+      player
   quit

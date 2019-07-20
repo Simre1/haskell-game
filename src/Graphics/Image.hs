@@ -23,14 +23,3 @@ readImage filepath = do
         (width, height) = (JP.imageWidth rgba8Img, JP.imageHeight rgba8Img)
 
       pure $ makeArray Seq (Sz2 width height) $ (\(Ix2 x y) -> let (JP.PixelRGBA8 r g b a) = JP.pixelAt rgba8Img x y  in (r,g,b,a))
-
-  -- withRenderer . const . liftIO . try . IMG.readImageAuto . unpack
-  -- where
-  --   loadImageWithJP :: Text -> IO (Either String (IMG.Image VS RGBA Word8))
-  --   loadImageWithJP filepath = do
-  --     eitherImage <- fmap JP.convertRGBA8 <$> JP.readImage (unpack filepath)
-  --     let i = (\img -> makeImageR VS (JP.imageWidth img, JP.imageHeight img) (\(x,y) -> let (JP.PixelRGBA8 r g b a) = JP.pixelAt img x y in PixelRGBA r g b a)) <$> eitherImage
-  --     case i of
-  --       Right x -> writeImage "/home/simon/test.bmp" x
-  --       Left x -> error x
-    --   pure i

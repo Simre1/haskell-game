@@ -14,7 +14,6 @@ import Lens.Micro.TH (makeLenses)
 import Polysemy (Member, Sem, Members, Lift)
 import Polysemy.Input (Input)
 import SDL.Input (keysymKeycode)
-import System.IO.Unsafe
 import SDL.Input.Keyboard.Codes
   ( pattern KeycodeUp
   , pattern KeycodeDown
@@ -30,9 +29,7 @@ import Data.Either (fromRight, fromLeft, either)
 import Linear.V2 (V2(..))
 import Data.Maybe (maybe)
 import Data.Default (Default(..))
-import Graphics.ColorSpace
 import qualified Data.Massiv.Array as M
-import Debug.Trace (traceShow, traceShowId)
 import Data.Word (Word8)
 
 import Sigma (Signal, arrM, buildSignal, withInitialization, feedback, stepSignal)
@@ -64,6 +61,10 @@ import Effect.Graphics
   , createStaticTexture
   , updateStaticTexture
   , makeRenderInstruction
+  , defaultRenderInstruction
+  , riZIndex
+  , riTextureArea
+  , riScreenArea
   , toAnyTexture
   , render
   , Any
@@ -152,7 +153,10 @@ renderPlayerShip = withInitialization ((,) <$> playerShipTexture1 <*> playerShip
                            destRect = pure $ Placed (fmap round (playerShip ^. playerShipPosition)) $ Rectangle 36 72
                            choosenTexture = if timer > 6 then texture1 else texture2
                            newTimer = if timer == 12 then 0 else succ timer
-                       render $ makeRenderInstruction 10 choosenTexture srcRect destRect
+                       render $ defaultRenderInstruction choosenTexture &
+                                  riZIndex .~ 10 &
+                                  riTextureArea .~ srcRect &
+                                  riScreenArea .~ destRect
 
                        pure ((), newTimer)
   where
