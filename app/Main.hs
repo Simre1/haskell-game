@@ -6,7 +6,7 @@ import Data.Text (pack)
 import Polysemy (runM)
 import Lens.Micro ((.~))
 
-import Sigma (signalSimpleMorph, withInitialization)
+import Sigma (signalMorph, withInitialization)
 import Sigma.Reactimate (reactimate)
 import Sigma.Framerate (limitFramerate)
 
@@ -24,7 +24,7 @@ main = do
   initializeAll
   w <- createWindow (pack "Space Invaders") (defaultWindow {windowResizable = True})
   r <- createRenderer w 0 defaultRenderer
-  reactimate $ limitFramerate 60 . signalSimpleMorph runM . runSDLEventInput . runGraphics r . runPhysics 60 $
+  runM $ reactimate $ limitFramerate 60 . runSDLEventInput . runGraphics r . runPhysics 60 $
     withInitialization (modifyCamera $ cameraArea . placedShape . rectangleDimensions .~ V2 480 480) . const $
       player
   quit

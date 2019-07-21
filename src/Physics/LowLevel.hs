@@ -74,8 +74,8 @@ runPhysicsE space = interpret $ \case
   ExecutePhysicsWithSpace action -> liftIO $ action space
 
 
-runPhysics :: Member (Lift IO) r => Double -> Signal (Sem (Physics:r)) a b -> Signal (Sem r) a b
-runPhysics time physicsSig = Signal $ \a -> do
+runPhysics :: Member (Lift IO) r => Double -> Signal (Physics:r) b -> Signal r b
+runPhysics time physicsSig = Signal $ do
   space <- Space <$> liftIO C.spaceNew
   wait <- liftIO $ newEmptyMVar
   threadId <- liftIO $ forkIO $ forever $ do
@@ -83,12 +83,12 @@ runPhysics time physicsSig = Signal $ \a -> do
     C.spaceStep (getSpace space) time
 
 
-  let contSignal sig = Signal $ \a -> do
-        (b, cont) <- runPhysicsE space $ stepSignal sig a
+  let contSignal sig = Signal $ do
+        (b, cont) <- runPhysicsE space $ stepSignal sig
         liftIO $ tryTakeMVar wait >> putMVar wait ()
         pure (b, contSignal cont)
 
-  x <- stepSignal (contSignal physicsSig) a
+  x <- stepSignal (contSignal physicsSig)
   liftIO $ putMVar wait ()
   pure x
 

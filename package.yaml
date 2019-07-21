@@ -57,6 +57,7 @@ default-extensions:
   - DeriveFunctor
   - GeneralizedNewtypeDeriving
   - MultiParamTypeClasses
+  - TypeApplications
 
 library:
   source-dirs: [src]

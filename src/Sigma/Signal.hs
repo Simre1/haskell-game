@@ -1,121 +1,71 @@
 {-# LANGUAGE TupleSections #-}
-module Sigma.Signal
-  ( Signal (..)
-  , arrM
-  , arrAction
-  , signalMorph
-  , signalSimpleMorph
-  , feedback
-  , simpleFeedback
-  , doOnce
-  , withInitialization
-  , withConstantInput
-  , buildSignal) where
+{-# LANGUAGE TypeApplications #-}
 
-import Prelude hiding ((.), id)
-import Data.Functor
-import Control.Monad
-import Control.Arrow
-import Control.Applicative
-import Control.Category
+module Sigma.Signal where
 
-newtype Signal m a b = Signal {stepSignal :: a -> m (b, Signal m a b)}
+import Polysemy
+import Polysemy.Reader
+import Data.Functor ((<&>))
+import Control.Arrow (second)
+import Polysemy.State
 
-instance Functor m => Functor (Signal m a) where
-  fmap f (Signal step) = Signal $ fmap (\(b,cont) -> (f b, fmap f cont)) . step
-  {-# INLINABLE fmap #-}
+data Signal r a = Signal {stepSignal :: Sem r (a, Signal r a)}
 
-instance Applicative m => Applicative (Signal m a) where
-  pure a = Signal (const $ pure (a,pure a))
-  (Signal step1) <*> (Signal step2) = Signal $ \a -> liftA2 combine (step1 a) (step2 a)
-    where combine (f, fCont) (a, aCont) = (f a, fCont <*> aCont)
-  {-# INLINABLE pure #-}
-  {-# INLINABLE (<*>) #-}
-
-instance Monad m => Category (Signal m) where
-  id = Signal (\a -> pure (a, id))
-  (Signal step2) . Signal (step1) = Signal $ \a -> do
-    (b, cont1) <- step1 a
-    (c, cont2) <- step2 b
-    return (c, cont2 . cont1)
-  {-# INLINABLE id #-}
-
-instance (Monad m) => Arrow (Signal m) where
-  arr f = Signal $ \a -> pure (f a, arr f)
-  first (Signal step) = Signal $ \(a,c) ->
-    (\(b, cont) -> ((b,c), first cont)) <$> step a
-
-  {-# INLINABLE arr #-}
-  {-# INLINABLE first #-}
-
-instance Monad m => ArrowChoice (Signal m) where
-  left (Signal step) = Signal $ \eitherAD -> case eitherAD of
-    (Left a) -> do
-      (b,cont) <- step a
-      return (Left b, left cont)
-    (Right c) -> return (Right c, left $ Signal step)
-  {-# INLINABLE left #-}
-
-instance MonadPlus m => ArrowZero (Signal m) where
-  zeroArrow = Signal $ const mzero
-  {-# INLINABLE zeroArrow #-}
-
-instance MonadPlus m => ArrowPlus (Signal m) where
-  signal1 <+> signal2 = Signal $ \a -> stepSignal signal1 a `mplus` stepSignal signal2 a
-  {-# INLINABLE (<+>) #-}
-
-instance Alternative m => Alternative (Signal m a) where
-  empty = Signal $ const empty
-  signal1 <|> signal2 = Signal $ \a -> stepSignal signal1 a <|> stepSignal signal2 a
-  {-# INLINABLE empty #-}
-  {-# INLINABLE (<|>) #-}
-
-buildSignal :: (a -> m (b, Signal m a b)) -> Signal m a b
 buildSignal = Signal
 
-arrM :: Functor m => (a -> m b) -> Signal m a b
-arrM f = Signal $ fmap (,arrM f) . f
-{-# INLINABLE arrM #-}
+instance Functor (Signal r) where
+  fmap f (Signal step) = Signal $ (\(a,cont) -> (f a, (f <$> cont))) <$> step
 
-arrAction :: Functor m => m b -> Signal m a b
-arrAction = arrM . const
-{-# INLINABLE arrAction #-}
+instance Applicative (Signal r) where
+  pure a = buildSignal $ pure (a, pure a)
+  (Signal step1) <*> (Signal step2) = buildSignal $ combine <$> step1 <*> step2
+    where combine (v1, cont1) (v2, cont2) = (v1 v2, cont1 <*> cont2)
 
 
-signalMorph :: Functor m2
-        => (forall c . (a1 -> m1 (b1, c)) -> (a2 -> m2 (b2, c)))
-        -> Signal m1 a1 b1
-        -> Signal m2 a2 b2
-signalMorph f signal = Signal $ fmap (second (signalMorph f)) . f (stepSignal signal)
+liftSem :: Sem r a -> Signal r a
+liftSem sem = buildSignal $ (,liftSem sem) <$> sem
+
+feedback :: s -> Signal (State s : r) a -> Signal r a
+feedback initial signal = buildSignal $ do
+  (newState, (a, cont)) <- runState initial $ stepSignal signal
+  pure (a, feedback newState cont)
+
+signalMorph :: (forall c . (Sem r1 (a1, c)) -> (Sem r2 (a2, c))) -> Signal r1 a1 -> Signal r2 a2
+signalMorph f signal = Signal $ fmap (second (signalMorph f)) $ f (stepSignal signal)
 {-# INLINABLE signalMorph #-}
 
 
-signalSimpleMorph :: Functor m2 => (forall x. m1 x -> m2 x) -> Signal m1 a b -> Signal m2 a b
-signalSimpleMorph f = signalMorph (f.)
-{-# INLINABLE signalSimpleMorph #-}
+readerSignal :: Signal r a -> Signal (Reader a : r) b -> Signal r b
+readerSignal sig sig2 = Signal $ do
+  (a, cont1) <- stepSignal sig
+  (b, cont2) <- runReader a (stepSignal sig2)
+  pure (b, readerSignal cont1 cont2)
+
+signalAsk :: Member (Reader a) r => Signal r a
+signalAsk = liftSem ask
+
+stateSignal :: Signal r s -> Signal (State s : r) b -> Signal r (s, b)
+stateSignal sig sig2 = Signal $ do
+  (a, cont1) <- stepSignal sig
+  (s, (b, cont2)) <- runState a (stepSignal sig2)
+  pure ((s,b), stateSignal cont1 cont2)
 
 
-feedback :: Monad m => c -> Signal m (a,c) (b,c) -> Signal m a b
-feedback initial (Signal step) = Signal $ \a -> do
-  ((b,c), cont) <- step (a,initial)
-  return (b, feedback c cont)
-{-# INLINABLE feedback #-}
+signalGet :: Member (State s) r => Signal r s
+signalGet = liftSem get
 
+signalPut :: Member (State s) r => Signal r s -> Signal r ()
+signalPut signal = buildSignal $ do
+  (s, cont) <- stepSignal signal
+  put s
+  pure ((), signalPut cont)
 
-simpleFeedback :: Functor m => a -> Signal m a a -> Signal m () a
-simpleFeedback initial signal = Signal $ \_ ->
-  stepSignal signal initial <&> \(a,c) -> (a, simpleFeedback a c)
-{-# INLINABLE simpleFeedback #-}
+doOnce :: Sem r a -> Signal r a
+doOnce action = Signal $ do
+  a <- action
+  pure (a, pure a)
 
-doOnce :: Applicative m => m a -> Signal m () a
-doOnce action = Signal . const $
-  (\a -> (a, arrM (const $ pure a))) <$> action
-
-withInitialization :: Monad m => m x -> (x -> Signal m a b) -> Signal m a b
-withInitialization initialize f = Signal $ \a -> do
+withInitialization :: Sem r x -> (x -> Signal r a) -> Signal r a
+withInitialization initialize f = buildSignal $ do
   x <- initialize
-  stepSignal (f x) a
-
-withConstantInput :: Functor m => a -> Signal m a b -> Signal m x b
-withConstantInput input sig = Signal $ \_ ->
-  second (withConstantInput input) <$> (stepSignal sig input)
+  stepSignal (f x)

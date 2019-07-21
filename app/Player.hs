@@ -4,7 +4,7 @@
 
 module Player where
 
-import Control.Arrow (returnA, (>>>), first, (<<<), (***), arr)
+
 import Control.Monad.IO.Class
 import Control.Exception (SomeException (SomeException))
 import Data.Function ((&))
@@ -12,6 +12,8 @@ import Data.Maybe (fromJust)
 import Lens.Micro ((.~), (^.), (%~))
 import Lens.Micro.TH (makeLenses)
 import Polysemy (Member, Sem, Members, Lift)
+import Polysemy.Reader (Reader, ask)
+import Polysemy.State (State, get, put)
 import Polysemy.Input (Input)
 import SDL.Input (keysymKeycode)
 import SDL.Input.Keyboard.Codes
@@ -32,7 +34,7 @@ import Data.Default (Default(..))
 import qualified Data.Massiv.Array as M
 import Data.Word (Word8)
 
-import Sigma (Signal, arrM, buildSignal, withInitialization, feedback, stepSignal)
+import Sigma.Signal (Signal, buildSignal, withInitialization, feedback, stepSignal, readerSignal, stateSignal, liftSem)
 import StateOperation (soSet, soGet)
 import Shapes2D (Placed(Placed), Rectangle(Rectangle), Circle(Circle))
 import Effect.Input (SDLInput, getKeyState)
@@ -94,35 +96,31 @@ data PlayerInput = PlayerInput
   } deriving Show
 
 makeLenses ''PlayerInput
-
-player :: Members [Input SDLInput, (Lift IO), Physics, Graphics] r => Signal (Sem r) () ()
-player = feedback def $ proc (_,playerShip) -> do
-  playerInput <- collectPlayerInput -< ()
-  movedPlayerShip <- movePlayerShip -< (playerShip, playerInput)
-  finalPlayerShip <- handleShooting -< (playerInput, movedPlayerShip)
-  _ <- renderPlayerShip -< finalPlayerShip
-  returnA -< ((), finalPlayerShip)
+--
+player :: Members [Input SDLInput, (Lift IO), Physics, Graphics] r => Signal r ()
+player = feedback (def :: PlayerShip) $
+  readerSignal collectPlayerInput $
+    movePlayerShip *> handleShooting *> renderPlayerShip
 
 -- TODO: Write bug report! Up + Left + Arbitrary key do not work when pressed at the same time !!!
-collectPlayerInput :: Member (Input SDLInput) r => Signal (Sem r) () PlayerInput
-collectPlayerInput = proc _ -> do
-  up <- maybe 0 (const 1) <$> getKeyState ((KeycodeW==) . keysymKeycode) -< ()
-  down <- maybe 0 (const (-1)) <$> getKeyState ((KeycodeS==) . keysymKeycode) -< ()
-  right <- maybe 0 (const 1) <$> getKeyState ((KeycodeD==) . keysymKeycode) -< ()
-  left <- maybe 0 (const (-1)) <$> getKeyState ((KeycodeA==) . keysymKeycode) -< ()
+collectPlayerInput :: Member (Input SDLInput) r => Signal r PlayerInput
+collectPlayerInput =
+  makePlayerInput
+    <$> (maybe 0 (const 1) <$> getKeyState ((KeycodeW==) . keysymKeycode))
+    <*> (maybe 0 (const (-1)) <$> getKeyState ((KeycodeS==) . keysymKeycode))
+    <*> (maybe 0 (const 1) <$> getKeyState ((KeycodeD==) . keysymKeycode))
+    <*> (maybe 0 (const (-1)) <$> getKeyState ((KeycodeA==) . keysymKeycode))
+    <*> (not . null <$> getKeyState ((KeycodeSpace==) . keysymKeycode))
+    where makePlayerInput up down right left spacebar = PlayerInput (V2 (left + right) (up + down)) spacebar
 
-  spacebar <- not . null <$> getKeyState ((KeycodeSpace==) . keysymKeycode) -< ()
-
-  returnA -< PlayerInput (V2 (left + right) (up + down)) spacebar
-
-movePlayerShip :: Member Physics r => Signal (Sem r) (PlayerShip, PlayerInput) (PlayerShip)
-movePlayerShip = withInitialization createPlayerShipInPhysicsWorld $ flip feedback $
-                  arrM $ \((playerShip, playerInput), (playerShipBody, freeAll)) -> do
-
-                    let newPosition = (playerShip ^. playerShipPosition) + calculateMovementVector (fmap fromIntegral (playerInput ^. playerInputDirection))
-                    soSet newPosition $ bodyPosition playerShipBody
-
-                    pure (playerShip & playerShipPosition .~ newPosition , (playerShipBody, freeAll))
+movePlayerShip :: (Member Physics r, Member (Reader PlayerInput) r, Member (State PlayerShip) r) => Signal r ()
+movePlayerShip = withInitialization createPlayerShipInPhysicsWorld $ \(playerShipBody, freeAll) -> liftSem $ do
+                  playerInput <- ask
+                  playerShip <- get
+                  let newPosition = (playerShip ^. playerShipPosition) + calculateMovementVector (fmap fromIntegral (playerInput ^. playerInputDirection))
+                  soSet newPosition $ bodyPosition playerShipBody
+                  put $ playerShip & playerShipPosition .~ newPosition
+                  pure ()
 
   where
     calculateMovementVector = (*2) . \case
@@ -146,9 +144,11 @@ movePlayerShip = withInitialization createPlayerShipInPhysicsWorld $ flip feedba
                    removeBodyFromSpace spaceShipBody
                 )
 
-renderPlayerShip :: Member Graphics r => Signal (Sem r) PlayerShip ()
-renderPlayerShip = withInitialization ((,) <$> playerShipTexture1 <*> playerShipTexture2) $ \(texture1, texture2) -> feedback 0 $
-                     arrM $ \(playerShip, timer) -> do
+renderPlayerShip :: (Member Graphics r, Member (State PlayerShip) r) => Signal r ()
+renderPlayerShip = withInitialization ((,) <$> playerShipTexture1 <*> playerShipTexture2) $ \(texture1, texture2) -> feedback (0 :: Int) $
+                     liftSem $ do
+                       playerShip <- get
+                       timer <- get @Int
                        let srcRect = Nothing
                            destRect = pure $ Placed (fmap round (playerShip ^. playerShipPosition)) $ Rectangle 36 72
                            choosenTexture = if timer > 6 then texture1 else texture2
@@ -157,8 +157,8 @@ renderPlayerShip = withInitialization ((,) <$> playerShipTexture1 <*> playerShip
                                   riZIndex .~ 10 &
                                   riTextureArea .~ srcRect &
                                   riScreenArea .~ destRect
-
-                       pure ((), newTimer)
+                       put newTimer
+                       pure ()
   where
     playerShipTexture1 :: Member Graphics r => Sem r (Texture Static)
     playerShipTexture1 = makeTexture $ do
@@ -183,8 +183,12 @@ renderPlayerShip = withInitialization ((,) <$> playerShipTexture1 <*> playerShip
     defaultImage = M.makeArray M.Seq (M.Sz2 36 72) $ \_ -> (50,200,200,100)
 
 
-handleShooting :: (Member Physics r, Member Graphics r) => Signal (Sem r) (PlayerInput, PlayerShip) (PlayerShip)
-handleShooting = arr snd <<< (manageBullets 0 *** arr id) <<< (arrM $ \(playerInput, playerShip) -> do
-  pure $ if playerShip ^. playerShipShootCooldown <= 0 && playerInput ^. playerInputShoot
-    then (pure (Straight, playerShip ^. playerShipPosition + (V2 18 72), Placed (V2 0 0) (Rectangle 800 600)), playerShip & playerShipShootCooldown .~ 0.3)
-    else (Nothing, playerShip & playerShipShootCooldown %~ (\x -> x-(1/60))))
+handleShooting :: (Members [Physics, Graphics, State PlayerShip, Reader PlayerInput] r) => Signal r ()
+handleShooting =
+  flip readerSignal (manageBullets 0) $ liftSem $ do
+    playerShip <- get
+    playerInput <- ask
+    shouldSpawnBullet <- if playerShip ^. playerShipShootCooldown <= 0 && playerInput ^. playerInputShoot
+      then put (playerShip & playerShipShootCooldown .~ 0.3) *> pure (pure (Straight, playerShip ^. playerShipPosition + (V2 18 72), Placed (V2 0 0) (Rectangle 800 600)))
+      else put (playerShip & playerShipShootCooldown %~ (\x -> x-(1/60))) *> pure Nothing
+    pure shouldSpawnBullet

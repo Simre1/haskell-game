@@ -106,8 +106,8 @@ runGraphicsE addTextureAction gd = interpret $ \case
     where findFormat = pure SDL.ARGB8888 -- TODO: Actually find out the best format!
           rgbaToPreferredFormat SDL.ARGB8888 (r,g,b,a) = B.word8 b <> B.word8 g <> B.word8 r <> B.word8 a
 
-runGraphics :: (Member (Lift IO) r) => SDL.Renderer -> Signal (Sem (Graphics:r)) a b -> Signal (Sem r) a b
-runGraphics renderer signal = Signal $ \a -> do
+runGraphics :: (Member (Lift IO) r) => SDL.Renderer -> Signal (Graphics:r) b -> Signal r b
+runGraphics renderer signal = Signal $ do
   SDL.rendererDrawBlendMode renderer $= SDL.BlendAlphaBlend
   graphicsData <- initGraphicsData defCamera renderer
   delayedTextureActions <- liftIO $ newIORef mempty
@@ -117,15 +117,15 @@ runGraphics renderer signal = Signal $ \a -> do
     (delayedAction, textures, camera) <- takeMVar renderObjectsMVar
     delayedAction
     renderObjects renderer textures camera
-  let makeSig sig = Signal $ \a -> do
+  let makeSig sig = Signal $ do
         liftIO $ writeIORef (dataRenderObjects graphicsData) mempty
-        (b, cont) <- stepSignal sig a
+        (b, cont) <- stepSignal sig
         textures <- liftIO $ readIORef (dataRenderObjects graphicsData)
         camera <- liftIO $ readIORef (dataCamera graphicsData)
         delayedAction <- liftIO $ atomicModifyIORef' delayedTextureActions $ \actions -> (mempty, actions)
         liftIO $ tryTakeMVar renderObjectsMVar >> putMVar renderObjectsMVar (delayedAction,textures,camera)
         pure (b,makeSig cont)
-  stepSignal (signalSimpleMorph (runGraphicsE (\newAction -> modifyIORef delayedTextureActions (>>newAction)) graphicsData) $ makeSig signal) a
+  stepSignal (signalMorph (runGraphicsE (\newAction -> modifyIORef delayedTextureActions (>>newAction)) graphicsData) $ makeSig signal)
     where
       defCamera = Camera $ Placed (V2 0 0) $ newRectangle 800 600
       renderObjects renderer textures camera = do
