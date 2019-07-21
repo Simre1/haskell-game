@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2866fd2bc2f70936e7d4854e1933a0b3aaf1a57684f070be363deab7d7a0866e
+-- hash: 231ef4ce0659a7602c0711714843d7f96e1c5ebb81a7163ea213de9dd42c82d6
 
 name:           gameEngine
 version:        0.1.0.0
@@ -31,7 +31,6 @@ library
       Effect.Input
       Effect.Physics
       Effect.Store
-      Graphics.Animation
       Graphics.Image
       Graphics.Internal
       Graphics.TextureBuilder
