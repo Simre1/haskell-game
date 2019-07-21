@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 module Input.SDL
   ( getKeyState
   , runSDLEventInput
@@ -10,31 +11,34 @@ import Data.Foldable
 import qualified SDL
 import Polysemy
 import Polysemy.Input
-import Control.Arrow
+import Polysemy.Reader
 import Control.Applicative
 import Debug.Trace
-import Sigma
+import Sigma.Signal
 import Control.Monad.IO.Class
-
+import Polysemy.State
 
 newtype SDLInput = SDLInput {rawInput :: [SDL.Event]}
 
-runInputWithSignal :: Signal (Sem r) a i -> Signal (Sem (Input i : r)) a b -> Signal (Sem r) a b
-runInputWithSignal calcNewI signal =
-  let sig = signalMorph $ \sigStep (a,i) -> runConstInput i $ sigStep a
-  in arr id &&& calcNewI >>> sig signal
+runInputWithSignal :: Signal r i -> Signal (Input i : r) b -> Signal r b
+runInputWithSignal calcNewI signal = readerSignal calcNewI $ signalMorph reinterpretInput signal
+  where reinterpretInput :: Sem (Input i : r) a -> Sem (Reader i : r) a
+        reinterpretInput = reinterpret (\Input -> ask)
 
-runSDLEventInput :: Member (Lift IO) r => Signal (Sem (Input SDLInput : r)) a b -> Signal (Sem r) a b
-runSDLEventInput = runInputWithSignal $ arrAction $ do
+runSDLEventInput :: Member (Lift IO) r => Signal (Input SDLInput : r) b -> Signal r b
+runSDLEventInput = runInputWithSignal $ liftSem $ do
                     events <- SDL.pollEvents
                     pure $ SDLInput events
 
 
 
-getKeyState :: Member (Input SDLInput) r => (SDL.Keysym -> Bool) -> Signal (Sem r) () (Maybe SDL.Keysym)
-getKeyState filterKeysym = simpleFeedback Nothing $ arrM $ \currentKeyState -> do
+getKeyState :: Member (Input SDLInput) r => (SDL.Keysym -> Bool) -> Signal r (Maybe SDL.Keysym)
+getKeyState filterKeysym = feedback (Nothing :: Maybe SDL.Keysym) $ liftSem $ do
+    currentKeyState <- get
     sdlEvents :: [SDL.EventPayload] <- fmap SDL.eventPayload . rawInput <$> input
-    pure $ foldl' foldKeysymState currentKeyState sdlEvents
+    let keysym = foldl' foldKeysymState currentKeyState sdlEvents
+    put keysym
+    pure keysym
 
   where foldKeysymState last payload = case payload of
           SDL.KeyboardEvent kData ->

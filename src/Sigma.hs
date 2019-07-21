@@ -1,15 +1,12 @@
 module Sigma
   ( Signal (..)
-  , arrM
-  , arrAction
   , signalMorph
-  , signalSimpleMorph
   , feedback
-  , simpleFeedback
   , doOnce
   , withInitialization
-  , withConstantInput
   , buildSignal
+  , liftSem
+
   ) where
 
 import Sigma.Signal

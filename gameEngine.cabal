@@ -4,7 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
+<<<<<<< HEAD
 -- hash: 231ef4ce0659a7602c0711714843d7f96e1c5ebb81a7163ea213de9dd42c82d6
+=======
+-- hash: dca4d8fc43e00169ecaba127bd983b6917a04930e94da83dd7dc95102efb0d3e
+>>>>>>> reduced-signals
 
 name:           gameEngine
 version:        0.1.0.0
@@ -27,10 +31,14 @@ source-repository head
 
 library
   exposed-modules:
+      Effect.GlobalState
       Effect.Graphics
       Effect.Input
       Effect.Physics
+<<<<<<< HEAD
       Effect.Store
+=======
+>>>>>>> reduced-signals
       Graphics.Image
       Graphics.Internal
       Graphics.TextureBuilder
@@ -47,7 +55,7 @@ library
       Paths_gameEngine
   hs-source-dirs:
       src
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses
+  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   build-depends:
       JuicyPixels
     , StateVar
@@ -80,7 +88,7 @@ executable gameEngine-exe
       Paths_gameEngine
   hs-source-dirs:
       app
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses
+  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       JuicyPixels
@@ -114,7 +122,7 @@ test-suite gameEngine-test
       Paths_gameEngine
   hs-source-dirs:
       test
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses
+  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -fplugin=Polysemy.Plugin
   build-depends:
       JuicyPixels

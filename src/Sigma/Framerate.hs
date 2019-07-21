@@ -7,18 +7,20 @@ import Control.Concurrent
 import System.Mem
 import Data.IORef
 import Control.Monad.IO.Class
+import Polysemy
 
-limitFramerate :: MonadIO m => Int -> Signal m a b -> Signal m a b
-limitFramerate fps signal = Signal $ \a -> do
+
+limitFramerate :: Member (Lift IO) r => Int -> Signal r b -> Signal r b
+limitFramerate fps signal = Signal $ do
   t <- liftIO getMonotonicTimeNSec
   d <- pure $ toEnum (1000000000 `quot` fps)
-  let newSig = Signal $ \a -> do
-        (b, cont) <- stepSignal signal a
+  let newSig = Signal $ do
+        (b, cont) <- stepSignal signal
         return (b, cont)
-  stepSignal (makeSignal d (t-d) signal) a
+  stepSignal (makeSignal d (t-d) signal)
 
-  where makeSignal d t1 s = Signal $ \a -> do
-          (b, cont) <- (stepSignal s $!) a
+  where makeSignal d t1 s = Signal $ do
+          (b, cont) <-  id $! (stepSignal s)
           t2 <- liftIO getMonotonicTimeNSec
           let diff = t2 - t1
           let waitTime = if diff >= d
