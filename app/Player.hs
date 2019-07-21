@@ -38,6 +38,7 @@ import Sigma.Signal (Signal, buildSignal, withInitialization, feedback, stepSign
 import StateOperation (soSet, soGet)
 import Shapes2D (Placed(Placed), Rectangle(Rectangle), Circle(Circle))
 import Effect.Input (SDLInput, getKeyState)
+import Effect.GlobalState (GlobalState)
 import Effect.Physics
   ( createBody
   , addBodyToSpace
@@ -76,7 +77,7 @@ import Effect.Graphics
   , updateStreamingTexture
   , createStreamingTexture
   )
-import Bullets (manageBullets, BulletType (Straight))
+import Bullets (signalSpawnBullet, BulletType (Straight), Bullets)
 
 data PlayerShip = PlayerShip
   { _playerShipPosition :: V2 Double
@@ -97,7 +98,7 @@ data PlayerInput = PlayerInput
 
 makeLenses ''PlayerInput
 --
-player :: Members [Input SDLInput, (Lift IO), Physics, Graphics] r => Signal r ()
+player :: Members [Input SDLInput, (Lift IO), Physics, Graphics, GlobalState Bullets] r => Signal r ()
 player = feedback (def :: PlayerShip) $
   readerSignal collectPlayerInput $
     movePlayerShip *> handleShooting *> renderPlayerShip
@@ -183,12 +184,12 @@ renderPlayerShip = withInitialization ((,) <$> playerShipTexture1 <*> playerShip
     defaultImage = M.makeArray M.Seq (M.Sz2 36 72) $ \_ -> (50,200,200,100)
 
 
-handleShooting :: (Members [Physics, Graphics, State PlayerShip, Reader PlayerInput] r) => Signal r ()
+handleShooting :: (Members [Lift IO, GlobalState Bullets, State PlayerShip, Reader PlayerInput] r) => Signal r ()
 handleShooting =
-  flip readerSignal (manageBullets 0) $ liftSem $ do
+  flip readerSignal signalSpawnBullet $ liftSem $ do
     playerShip <- get
     playerInput <- ask
     shouldSpawnBullet <- if playerShip ^. playerShipShootCooldown <= 0 && playerInput ^. playerInputShoot
-      then put (playerShip & playerShipShootCooldown .~ 0.3) *> pure (pure (Straight, playerShip ^. playerShipPosition + (V2 18 72), Placed (V2 0 0) (Rectangle 800 600)))
+      then put (playerShip & playerShipShootCooldown .~ 0.3) *> pure (pure (Straight, playerShip ^. playerShipPosition + (V2 18 72)))
       else put (playerShip & playerShipShootCooldown %~ (\x -> x-(1/60))) *> pure Nothing
     pure shouldSpawnBullet

@@ -4,6 +4,7 @@
 module Sigma.Signal where
 
 import Polysemy
+import Polysemy.NonDet
 import Polysemy.Reader
 import Data.Functor ((<&>))
 import Control.Arrow (second)
@@ -21,9 +22,14 @@ instance Applicative (Signal r) where
   (Signal step1) <*> (Signal step2) = buildSignal $ combine <$> step1 <*> step2
     where combine (v1, cont1) (v2, cont2) = (v1 v2, cont1 <*> cont2)
 
-
 liftSem :: Sem r a -> Signal r a
 liftSem sem = buildSignal $ (,liftSem sem) <$> sem
+
+test :: Member (Lift Maybe) r => Sem r Int
+test = sendM Nothing
+
+printMaybe :: Show a => Maybe a -> IO ()
+printMaybe = print
 
 feedback :: s -> Signal (State s : r) a -> Signal r a
 feedback initial signal = buildSignal $ do
@@ -59,6 +65,12 @@ signalPut signal = buildSignal $ do
   (s, cont) <- stepSignal signal
   put s
   pure ((), signalPut cont)
+
+signalModify :: Member (State s) r => Signal r (s -> s) -> Signal r ()
+signalModify signal = buildSignal $ do
+  (f, cont) <- stepSignal signal
+  modify f
+  pure ((), signalModify cont)
 
 doOnce :: Sem r a -> Signal r a
 doOnce action = Signal $ do

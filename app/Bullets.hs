@@ -1,8 +1,8 @@
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE BangPatterns #-}
+module Bullets (manageBullets, BulletType(..), initializeBulletState, signalSpawnBullet, signalSpawnBullets, spawnBullet, Bullets) where
 
-module Bullets (manageBullets, BulletType(..)) where
-
-import Polysemy (Member, Sem)
+import Polysemy (Member, Sem, Members)
 import Linear (V2(V2))
 import Control.Arrow (arr, first)
 import Data.Functor ((<&>))
@@ -12,11 +12,12 @@ import Graphics.ColorSpace
 import Data.Function ((&))
 import Lens.Micro ((.~))
 import Polysemy.Reader (ask, Reader)
-import Polysemy.State (get, put)
-import Polysemy (raise)
+import Polysemy.State (get, put, modify)
+import Polysemy (raise, Lift)
+import Control.Monad.IO.Class
 
 import Shapes2D (Placed(Placed), Rectangle(Rectangle), Circle(Circle))
-import Sigma.Signal (Signal, feedback, buildSignal, withInitialization, stepSignal, liftSem)
+import Sigma.Signal (Signal, feedback, buildSignal, withInitialization, stepSignal, liftSem, signalAsk, signalModify)
 import Effect.Physics
   ( Physics
   , Body
@@ -39,6 +40,7 @@ import Effect.Graphics
   ( Graphics
   , Texture
   , Any
+  , RenderInstruction
   , render
   , makeRenderInstruction
   , makeTexture
@@ -49,40 +51,61 @@ import Effect.Graphics
   , riZIndex
   , riScreenArea
   )
+import Effect.GlobalState (GlobalState, withGlobalState, runGlobalStateWithIORef, withGlobalStateSignal)
 
-data BulletType = Straight
+data BulletType = Straight deriving Show
 
-manageBullets :: forall r. (Member Physics r, Member Graphics r) => Int -> Signal (Reader (Maybe (BulletType, V2 Double, Placed Rectangle Double)) : r) ()
-manageBullets zIndex = feedback ([]@(Signal r (Maybe (V2 Double, Texture Any)))) $
-  let sig = buildSignal $ do
-        maybeShootNewBullet <- ask
-        bullets <- get
-        let maybeNewBullet = maybeShootNewBullet <&> \(bulletType, bulletSpawnPosition, bulletAliveArea) ->
-              makeBulletSignal bulletType bulletSpawnPosition bulletAliveArea
-        maybeBullets <- sequenceA $ raise . raise . stepSignal <$> (fromMaybe (liftSem $ pure Nothing) maybeNewBullet : bullets)
+data Bullets = Bullets [(BulletType, V2 Double)] deriving Show
 
-        let aliveBullets = first fromJust <$> filter (not . null . fst) maybeBullets
-        sequenceA $ renderBullets . fst <$> (aliveBullets)
+spawnBullet :: (Member (GlobalState Bullets) r, Member (Lift IO) r) => BulletType -> V2 Double -> Sem r ()
+spawnBullet bulletType bulletPosition = withGlobalState @Bullets $ do
+  Bullets bullets <- get
+  put $ Bullets $ (bulletType, bulletPosition):bullets
+
+
+signalSpawnBullet :: (Member (GlobalState Bullets) r, Member (Lift IO) r) => Signal (Reader (Maybe (BulletType, V2 Double)) : r) ()
+signalSpawnBullet = liftSem $
+  (ask @(Maybe (BulletType, V2 Double))) >>= maybe
+    (pure ())
+    (\(bulletType, bulletPosition) -> spawnBullet bulletType bulletPosition)
+
+
+signalSpawnBullets :: (Member (GlobalState Bullets) r, Member (Lift IO) r) => Signal (Reader [(BulletType, V2 Double)] : r) ()
+signalSpawnBullets = withGlobalStateSignal @Bullets $
+   signalModify $ (\newBullets (Bullets activeBullets) -> Bullets (newBullets ++ activeBullets)) <$> signalAsk
+
+initializeBulletState :: Member (Lift IO) r => Signal (GlobalState Bullets : r) a -> Signal r a
+initializeBulletState = runGlobalStateWithIORef (Bullets [])
+
+manageBullets :: forall r. Members [Physics, Graphics, GlobalState Bullets] r => Signal r ()
+manageBullets = feedback ([]@(Signal r (Maybe RenderInstruction))) $
+  let sig = liftSem $ withGlobalState @Bullets $ do
+        bulletSignals :: [Signal r (Maybe RenderInstruction)] <- get
+        Bullets newBullets <- get
+        let newBulletSignals =
+              uncurry makeBulletSignal <$> newBullets
+        aliveBullets <- fmap (first fromJust) . filter (not . null . fst) <$> sequenceA (raise . raise . stepSignal <$> (newBulletSignals ++ bulletSignals))
+        sequenceA $ render . fst <$> aliveBullets
         put $ snd <$> aliveBullets
-        pure ((),sig)
+        put $ Bullets []
+        pure ()
+
   in sig
-  where
-    renderBullets :: Member Graphics r2 => (V2 Double, Texture Any) -> Sem r2 ()
-    renderBullets (pos,texture) =
-          render $ defaultRenderInstruction texture &
-                    riZIndex .~ zIndex &
-                    riScreenArea .~ (pure $ Placed (fmap round pos - V2 5 5) $ Rectangle 10 10)
+
 
 isInside :: (Ord x, Num x) => V2 x -> Placed Rectangle x -> Bool
 isInside (V2 x y) (Placed (V2 minX minY) (Rectangle areaX areaY)) =
   x >= minX && y >= minY && minX + areaX >= x && minY + areaY >= y
 
-makeBulletSignal :: (Member Physics r, Member Graphics r) => BulletType -> V2 Double -> Placed Rectangle Double -> Signal r (Maybe (V2 Double, Texture Any))
-makeBulletSignal Straight initialPosition aliveArea = withInitialization ((,) <$> initializeBulletPhysics <*> makeBulletTexture) $ \((bulletBody, freeBullet), bulletTexture) ->
+makeBulletSignal :: (Member Physics r, Member Graphics r) => BulletType -> V2 Double -> Signal r (Maybe RenderInstruction)
+makeBulletSignal Straight initialPosition = withInitialization ((,) <$> initializeBulletPhysics <*> makeBulletTexture) $ \((bulletBody, freeBullet), bulletTexture) ->
   liftSem $ do
     bulletPosition <- soGet $ bodyPosition bulletBody
-    if isInside bulletPosition aliveArea
-      then pure $ pure (bulletPosition, bulletTexture)
+    if isInside bulletPosition $ Placed (V2 0 0) $ Rectangle 480 480
+      then pure . pure $ defaultRenderInstruction bulletTexture
+                              & riZIndex .~ 0
+                              & riScreenArea .~ (pure $ Placed (fmap round bulletPosition - V2 5 5) $ Rectangle 10 10)
+
       else freeBullet *> pure Nothing
   where
     initializeBulletPhysics :: Member Physics r => Sem r (Body, Sem r ())
