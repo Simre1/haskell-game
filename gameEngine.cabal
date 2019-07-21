@@ -4,11 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
-<<<<<<< HEAD
--- hash: 231ef4ce0659a7602c0711714843d7f96e1c5ebb81a7163ea213de9dd42c82d6
-=======
 -- hash: dca4d8fc43e00169ecaba127bd983b6917a04930e94da83dd7dc95102efb0d3e
->>>>>>> reduced-signals
 
 name:           gameEngine
 version:        0.1.0.0
@@ -35,10 +31,6 @@ library
       Effect.Graphics
       Effect.Input
       Effect.Physics
-<<<<<<< HEAD
-      Effect.Store
-=======
->>>>>>> reduced-signals
       Graphics.Image
       Graphics.Internal
       Graphics.TextureBuilder
