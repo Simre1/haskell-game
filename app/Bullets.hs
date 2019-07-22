@@ -8,7 +8,6 @@ import Control.Arrow (arr, first)
 import Data.Functor ((<&>))
 import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.Massiv.Array as M
-import Graphics.ColorSpace
 import Data.Function ((&))
 import Lens.Micro ((.~))
 import Polysemy.Reader (ask, Reader)

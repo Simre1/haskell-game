@@ -30,7 +30,6 @@ import SDL.Input.Keyboard.Codes
 import Data.Either (fromRight, fromLeft, either)
 import Linear.V2 (V2(..))
 import Data.Maybe (maybe)
-import Data.Default (Default(..))
 import qualified Data.Massiv.Array as M
 import Data.Word (Word8)
 
@@ -86,9 +85,6 @@ data PlayerShip = PlayerShip
   , _playerShipEnergy :: Double
   } deriving Show
 
-instance Default PlayerShip where
-  def = PlayerShip (V2 0 0) 0 0 0
-
 makeLenses ''PlayerShip
 
 data PlayerInput = PlayerInput
@@ -99,7 +95,7 @@ data PlayerInput = PlayerInput
 makeLenses ''PlayerInput
 --
 player :: Members [Input SDLInput, (Lift IO), Physics, Graphics, GlobalState Bullets] r => Signal r ()
-player = feedback (def :: PlayerShip) $
+player = feedback (PlayerShip (V2 0 0) 100 0 0) $
   readerSignal collectPlayerInput $
     movePlayerShip *> handleShooting *> renderPlayerShip
 

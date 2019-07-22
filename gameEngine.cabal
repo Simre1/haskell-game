@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bbcf9bca61c8e6c8eab0d8a6945821fb5cdcaed8f8a5bddbf79a611dac964522
+-- hash: 60b2afa8b5cad9f46c7a70b5d01be399dcc71d2ca3e4024944c80f899c261977
 
 name:           gameEngine
 version:        0.1.0.0
@@ -56,15 +56,12 @@ library
     , chiphunk
     , colour
     , containers
-    , data-default
     , linear
     , massiv
-    , massiv-io
     , microlens
     , microlens-th
     , polysemy
     , random
-    , repa
     , sdl2
     , storable-tuple
     , text
@@ -91,16 +88,13 @@ executable gameEngine-exe
     , chiphunk
     , colour
     , containers
-    , data-default
     , gameEngine
     , linear
     , massiv
-    , massiv-io
     , microlens
     , microlens-th
     , polysemy
     , random
-    , repa
     , sdl2
     , storable-tuple
     , text
@@ -125,16 +119,13 @@ test-suite gameEngine-test
     , chiphunk
     , colour
     , containers
-    , data-default
     , gameEngine
     , linear
     , massiv
-    , massiv-io
     , microlens
     , microlens-th
     , polysemy
     , random
-    , repa
     , sdl2
     , storable-tuple
     , text
