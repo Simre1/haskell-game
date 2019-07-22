@@ -4,6 +4,7 @@ module Graphics.Internal
   (module Graphics.TextureBuilder
   , Graphics
   , makeTexture
+  , destroyTexture
   , runGraphics
   , makeRenderInstruction
   , defaultRenderInstruction
@@ -87,6 +88,7 @@ initGraphicsData camera renderer = liftIO $ GraphicsData <$> newIORef mempty
 data Graphics (m :: * -> *) k where
   Render :: RenderInstruction -> Graphics m ()
   MakeTexture :: TextureBuilder (Texture a) -> Graphics m (Texture a)
+  DestroyTexture :: Texture a -> Graphics m ()
   GetCamera :: Graphics m Camera
   ModifyCamera :: (Camera -> Camera) -> Graphics m ()
 
@@ -98,6 +100,7 @@ runGraphicsE addTextureAction gd = interpret $ \case
   (Render renderTexture) -> liftIO $ modifyIORef' (dataRenderObjects gd) (:|> renderTexture)
   GetCamera -> liftIO $ readIORef (dataCamera gd)
   (ModifyCamera modifyCam) -> liftIO $ modifyIORef (dataCamera gd) modifyCam
+  (DestroyTexture (Texture _ sdlTexture)) -> liftIO $ SDL.destroyTexture sdlTexture
   (MakeTexture textureBuilder) -> liftIO $ do
     preferredFormat <- findFormat
     (texture, textureAction) <- runTextureBuilder (dataRenderer gd) preferredFormat (rgbaToPreferredFormat preferredFormat) textureBuilder
@@ -130,7 +133,7 @@ runGraphics renderer signal = Signal $ do
       defCamera = Camera $ Placed (V2 0 0) $ newRectangle 800 600
       renderObjects renderer textures camera = do
         SDL.rendererRenderTarget renderer $= Nothing
-        SDL.rendererDrawColor renderer $= SDL.V4 maxBound maxBound maxBound maxBound
+        SDL.rendererDrawColor renderer $= SDL.V4 minBound minBound minBound maxBound
         SDL.rendererLogicalSize renderer $= pure (toEnum <$> (camera ^. cameraArea . placedShape . rectangleDimensions))
         SDL.clear renderer
         liftIO $ mapM_ runRender (sortBy (\r1 r2 -> _riZIndex r1 `compare` _riZIndex r2) textures)
@@ -140,6 +143,7 @@ runGraphics renderer signal = Signal $ do
                   let newDestRect = destRect <&> over placedPosition (adjustPointForRender camera) . over (placedShape . rectangleHeight) negate
                   in do
                     SDL.copyEx renderer texture (transformRectangle<$>srcRect) (transformRectangle<$>newDestRect) (CDouble rotationDegrees) (SDL.P . fmap toEnum <$> rotationPoint) (V2 flipX (not flipY))
+
 
 
 adjustPointForRender :: Camera -> V2 Int -> V2 Int

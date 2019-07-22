@@ -21,6 +21,7 @@ import Control.Monad.IO.Class
 import Lens.Micro (sets)
 
 import Player (player)
+import Enemy
 import Bullets (manageBullets, initializeBulletState, BulletType(Straight), Bullets(..), spawnBullet)
 import Linear.V2
 
@@ -31,5 +32,5 @@ main = do
   r <- createRenderer w 0 defaultRenderer
   runM $ reactimate $ limitFramerate 60 . runSDLEventInput . runGraphics r . runPhysics 60 . initializeBulletState $
     withInitialization (modifyCamera $ cameraArea . placedShape . rectangleDimensions .~ V2 480 480) . const $
-      player *> manageBullets
+      player *> basicEnemy *> manageBullets
   quit

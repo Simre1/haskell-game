@@ -53,24 +53,24 @@ import Effect.Graphics
   )
 import Effect.GlobalState (GlobalState, withGlobalState, runGlobalStateWithIORef, withGlobalStateSignal)
 
-data BulletType = Straight deriving Show
+data BulletType = Straight | EnemyStraight deriving Show
 
 data Bullets = Bullets [(BulletType, V2 Double)] deriving Show
 
-spawnBullet :: (Member (GlobalState Bullets) r, Member (Lift IO) r) => BulletType -> V2 Double -> Sem r ()
+spawnBullet :: (Member (GlobalState Bullets) r) => BulletType -> V2 Double -> Sem r ()
 spawnBullet bulletType bulletPosition = withGlobalState @Bullets $ do
   Bullets bullets <- get
   put $ Bullets $ (bulletType, bulletPosition):bullets
 
 
-signalSpawnBullet :: (Member (GlobalState Bullets) r, Member (Lift IO) r) => Signal (Reader (Maybe (BulletType, V2 Double)) : r) ()
+signalSpawnBullet :: (Member (GlobalState Bullets) r) => Signal (Reader (Maybe (BulletType, V2 Double)) : r) ()
 signalSpawnBullet = liftSem $
   (ask @(Maybe (BulletType, V2 Double))) >>= maybe
     (pure ())
     (\(bulletType, bulletPosition) -> spawnBullet bulletType bulletPosition)
 
 
-signalSpawnBullets :: (Member (GlobalState Bullets) r, Member (Lift IO) r) => Signal (Reader [(BulletType, V2 Double)] : r) ()
+signalSpawnBullets :: (Member (GlobalState Bullets) r) => Signal (Reader [(BulletType, V2 Double)] : r) ()
 signalSpawnBullets = withGlobalStateSignal @Bullets $
    signalModify $ (\newBullets (Bullets activeBullets) -> Bullets (newBullets ++ activeBullets)) <$> signalAsk
 
@@ -98,7 +98,46 @@ isInside (V2 x y) (Placed (V2 minX minY) (Rectangle areaX areaY)) =
   x >= minX && y >= minY && minX + areaX >= x && minY + areaY >= y
 
 makeBulletSignal :: (Member Physics r, Member Graphics r) => BulletType -> V2 Double -> Signal r (Maybe RenderInstruction)
-makeBulletSignal Straight initialPosition = withInitialization ((,) <$> initializeBulletPhysics <*> makeBulletTexture) $ \((bulletBody, freeBullet), bulletTexture) ->
+makeBulletSignal Straight initialPosition = straightBullet initialPosition
+makeBulletSignal EnemyStraight initialPosition = straightEnemyBullet initialPosition
+
+
+straightEnemyBullet :: (Member Physics r, Member Graphics r) => V2 Double -> Signal r (Maybe RenderInstruction)
+straightEnemyBullet initialPosition = withInitialization ((,) <$> initializeBulletPhysics <*> makeBulletTexture) $ \((bulletBody, freeBullet), bulletTexture) ->
+  liftSem $ do
+    bulletPosition <- soGet $ bodyPosition bulletBody
+    if isInside bulletPosition $ Placed (V2 0 0) $ Rectangle 480 480
+      then pure . pure $ defaultRenderInstruction bulletTexture
+                              & riZIndex .~ 0
+                              & riScreenArea .~ (pure $ Placed (fmap round bulletPosition - V2 5 5) $ Rectangle 10 10)
+
+      else freeBullet *> pure Nothing
+  where
+    initializeBulletPhysics :: Member Physics r => Sem r (Body, Sem r ())
+    initializeBulletPhysics = do
+          bulletBody <- createBody $ DynamicBody 1 1
+          soSet initialPosition $ bodyPosition bulletBody
+          bulletShape <- createShape bulletBody $ CircleShape (Circle 5) (V2 0 0)
+          soSet True $ shapeSensor bulletShape
+          soSet (V2 0 (-0.1)) $ bodyVelocity bulletBody
+          addBodyToSpace bulletBody
+          addShapeToSpace bulletShape
+          pure (bulletBody, do
+                              removeShapeFromSpace bulletShape
+                              removeBodyFromSpace bulletBody
+                              freeShape bulletShape
+                              freeBody bulletBody
+
+               )
+    makeBulletTexture :: Member Graphics r => Sem r (Texture Any)
+    makeBulletTexture = makeTexture $ do
+      texture <- createStaticTexture $ Rectangle 10 10
+      updateStaticTexture texture Nothing $ M.makeArray M.Seq (M.Sz2 10 10) (const (255,255,255,255))
+      pure $ toAnyTexture texture
+
+
+straightBullet :: (Member Physics r, Member Graphics r) => V2 Double -> Signal r (Maybe RenderInstruction)
+straightBullet initialPosition = withInitialization ((,) <$> initializeBulletPhysics <*> makeBulletTexture) $ \((bulletBody, freeBullet), bulletTexture) ->
   liftSem $ do
     bulletPosition <- soGet $ bodyPosition bulletBody
     if isInside bulletPosition $ Placed (V2 0 0) $ Rectangle 480 480
@@ -127,5 +166,5 @@ makeBulletSignal Straight initialPosition = withInitialization ((,) <$> initiali
     makeBulletTexture :: Member Graphics r => Sem r (Texture Any)
     makeBulletTexture = makeTexture $ do
       texture <- createStaticTexture $ Rectangle 10 10
-      updateStaticTexture texture Nothing $ M.makeArray M.Seq (M.Sz2 10 10) (const (0,0,0,255))
+      updateStaticTexture texture Nothing $ M.makeArray M.Seq (M.Sz2 10 10) (const (255,255,255,255))
       pure $ toAnyTexture texture
