@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 60b2afa8b5cad9f46c7a70b5d01be399dcc71d2ca3e4024944c80f899c261977
+-- hash: fe5e203a1a2e284dad7b17abcb0318bcb50b4db75b7598c21cc2602a31d47d4d
 
 name:           gameEngine
 version:        0.1.0.0
@@ -27,22 +27,20 @@ source-repository head
 
 library
   exposed-modules:
-      Effect.GlobalState
+      Aux.Polysemy.Input
+      Effect.Apecs
       Effect.Graphics
       Effect.Input
-      Effect.Physics
       Graphics.Image
       Graphics.Internal
       Graphics.TextureBuilder
       Input.SDL
-      Physics.LowLevel
       Shapes2D
       Sigma
       Sigma.Framerate
       Sigma.Reactimate
       Sigma.Signal
       Sigma.Switch
-      StateOperation
   other-modules:
       Paths_gameEngine
   hs-source-dirs:
@@ -51,6 +49,8 @@ library
   build-depends:
       JuicyPixels
     , StateVar
+    , apecs
+    , apecs-physics
     , base >=4.7 && <5
     , bytestring
     , chiphunk
@@ -60,6 +60,7 @@ library
     , massiv
     , microlens
     , microlens-th
+    , mtl
     , polysemy
     , random
     , sdl2
@@ -72,9 +73,10 @@ library
 executable gameEngine-exe
   main-is: Main.hs
   other-modules:
-      Bullets
-      Enemy
+      Input
       Player
+      Render
+      World
       Paths_gameEngine
   hs-source-dirs:
       app
@@ -83,6 +85,8 @@ executable gameEngine-exe
   build-depends:
       JuicyPixels
     , StateVar
+    , apecs
+    , apecs-physics
     , base >=4.7 && <5
     , bytestring
     , chiphunk
@@ -93,6 +97,7 @@ executable gameEngine-exe
     , massiv
     , microlens
     , microlens-th
+    , mtl
     , polysemy
     , random
     , sdl2
@@ -114,6 +119,8 @@ test-suite gameEngine-test
   build-depends:
       JuicyPixels
     , StateVar
+    , apecs
+    , apecs-physics
     , base >=4.7 && <5
     , bytestring
     , chiphunk
@@ -124,6 +131,7 @@ test-suite gameEngine-test
     , massiv
     , microlens
     , microlens-th
+    , mtl
     , polysemy
     , random
     , sdl2

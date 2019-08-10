@@ -10,7 +10,7 @@ import Control.Monad.IO.Class
 import Polysemy
 
 
-limitFramerate :: Member (Lift IO) r => Int -> Signal r b -> Signal r b
+limitFramerate :: Member (Embed IO) r => Int -> Signal (Sem r) b -> Signal (Sem r) b
 limitFramerate fps signal = Signal $ do
   t <- liftIO getMonotonicTimeNSec
   d <- pure $ toEnum (1000000000 `quot` fps)

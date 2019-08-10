@@ -2,7 +2,7 @@ module Sigma.Switch (switch) where
 
 import Sigma.Signal
 
-switch :: Signal r (b, Maybe c) -> (c -> Signal r b) -> Signal r b
+switch :: Monad m => Signal m (b, Maybe c) -> (c -> Signal m b) -> Signal m b
 switch s1 s2 = Signal $ do
   ((b,mC),cont) <- stepSignal s1
   maybe
