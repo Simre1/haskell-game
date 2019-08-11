@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 789a4e4250e059d9c8879ab8630a62c5f747ad1ce5414d18e9ab973a8c61f405
+-- hash: 7d3dd9bd9561ae1acdcf430d31c27e0c2a6d6b432ecebe170f4ab62266685352
 
 name:           gameEngine
 version:        0.1.0.0
@@ -74,6 +74,7 @@ executable gameEngine-exe
   main-is: Main.hs
   other-modules:
       Bullets
+      Enemies
       Input
       Player
       Render

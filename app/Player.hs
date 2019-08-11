@@ -35,7 +35,7 @@ playerStep = do
   cmap (\(Player c, Position pos) -> (Position (pos + playerSpeed velocity), Player (c - (6/100))))
   when s $ cmapM $ \(Player c, Position pos) ->
     if (c <= 0)
-      then spawnStraightBullet (Position pos) (Velocity $ V2 0 500) *> pure (Player playerCooldown)
+      then spawnStraightBullet (Position $ pos + V2 0 40) (Velocity $ V2 0 500) True *> pure (Player playerCooldown)
       else pure (Player c)
   where boolToNum True = 1
         boolToNum False = 0

@@ -22,17 +22,41 @@ import Control.Monad
 import World
 import Player
 import Bullets
+import Enemies
 
 
 renderWorld :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderWorld = renderPlayer *> renderBullets
+renderWorld = renderPlayer *> renderBullets *> renderEnemies
+
+renderEnemies :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
+renderEnemies = withInitialization loadEnemiesTexture $ \texture -> liftSem $
+  forEachEnemy (renderEnemy texture)
+  where
+    renderEnemy :: Member Graphics r => Texture Any -> EnemyType -> V2 Double -> Sem r ()
+    renderEnemy texture ((Argo _)) pos =
+          render $ makeRenderInstruction
+                    8
+                    texture
+                    Nothing
+                    (Just $ Placed (round <$> pos - V2 20 20) $ Rectangle 40 40)
+                    0
+                    Nothing
+                    (V2 False False)
+
+loadEnemiesTexture :: Member Graphics r => Sem r (Texture Any)
+loadEnemiesTexture = makeTexture $ do
+  texture <- createStaticTexture $ Rectangle 40 40
+  let img = makeArray Seq (Sz (Ix2 40 40)) $ \(Ix2 x y) -> let v = toEnum $ 3 * (30 - abs (20 - x)) + 3 * (30 - abs (20 - y)) in (v,v,v,255)
+  updateStaticTexture texture Nothing img
+  pure $ toAnyTexture texture
+
 
 renderBullets :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
 renderBullets = withInitialization loadBulletTexture $ \texture -> liftSem $
   forEachBullet (renderBullet texture)
   where
-    renderBullet :: Member Graphics r => Texture Any -> Bullet -> V2 Double -> Sem r ()
-    renderBullet texture (Bullet Straight) pos =
+    renderBullet :: Member Graphics r => Texture Any -> BulletType -> V2 Double -> Sem r ()
+    renderBullet texture (Straight) pos =
           render $ makeRenderInstruction
                     5
                     texture

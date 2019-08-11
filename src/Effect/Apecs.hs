@@ -11,9 +11,13 @@ import Data.IORef
 import Apecs
 import qualified Control.Monad.Reader as R
 import Apecs.Physics
+import Data.IORef
+import Data.Maybe
+import Control.Monad
 
 data ApecsSystem w (m :: * -> *) a where
   ExecuteApecsSystem :: SystemT w m a -> ApecsSystem w m a
+--  DoAtTheEnd :: SystemT w IO () -> ApecsSystem w m a
 
 makeSem ''ApecsSystem
 

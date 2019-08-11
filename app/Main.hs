@@ -27,6 +27,7 @@ import Player
 import Input
 import Render
 import Bullets
+import Enemies
 
 main :: IO ()
 main = do
@@ -35,7 +36,7 @@ main = do
   r <- createRenderer w 0 defaultRenderer
   runM $ reactimate $ limitFramerate 60 . runSDLEventInput . runGraphics r . runApecs (liftIO $ initWorld) . feedGameInput $
     withInitialization (modifyCamera $ cameraArea . placedShape . rectangleDimensions .~ V2 480 480) . const $
-      player *> bullets *> renderWorld
+      player *> bullets *> renderWorld *> enemies
         *> physics
   quit
 

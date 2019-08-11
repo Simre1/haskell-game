@@ -18,13 +18,13 @@ module Apecs.Physics (
   -- * Shape
   Convex (..), Shape (..),
   Mass (..), Density (..), Sensor (..), Friction (..), Elasticity (..), SurfaceVelocity (..), CollisionFilter (..),
-  Bitmask (..), maskAll, maskNone, maskList, defaultFilter, boxShape,
+  Bitmask (..), CollisionType (..),  maskAll, maskNone, maskList, defaultFilter, boxShape,
 
   -- * Constraint
   Constraint (..), ConstraintType (..), MaxForce (..), MaxBias (..), ErrorBias (..), CollideBodies (..),
 
   -- * Collision
-  Collision (..), CollisionHandler (..), defaultHandler,
+  Collision (..), CollisionHandler (..), defaultHandler, addPostStepCallback, 
   CollisionSource(..), BeginCB, SeparateCB, PreSolveCB, PostSolveCB,
   mkBeginCB, mkSeparateCB, mkPreSolveCB, mkPostSolveCB,
 
@@ -58,5 +58,5 @@ import           Apecs.Physics.Types
 -- also give this entity a number of __sub-components__.
 -- These sub-components may be read and written separately from the actualy @'Body'@ itself,
 -- which makes the library both more expressive (as you can only write about the parts of a
--- physics body you actually want to view or change) and more performant 
+-- physics body you actually want to view or change) and more performant
 -- (as only the changed parts of a body actually need to be updated when you write to them).
