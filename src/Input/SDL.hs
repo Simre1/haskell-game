@@ -17,22 +17,23 @@ import Debug.Trace
 import Sigma.Signal
 import Control.Monad.IO.Class
 import Polysemy.State
+import Aux.Polysemy.Input
 
 newtype SDLInput = SDLInput {rawInput :: [SDL.Event]}
+--
+-- runInputWithSignal :: Signal (Sem r) i -> Signal (Sem (Input i : r)) b -> Signal (Sem r) b
+-- runInputWithSignal calcNewI signal = readerSignal calcNewI $ signalMorph reinterpretInput signal
+--   where reinterpretInput :: Sem (Input i : r) a -> Sem (Reader i : r) a
+--         reinterpretInput = reinterpret (\Input -> ask)
 
-runInputWithSignal :: Signal r i -> Signal (Input i : r) b -> Signal r b
-runInputWithSignal calcNewI signal = readerSignal calcNewI $ signalMorph reinterpretInput signal
-  where reinterpretInput :: Sem (Input i : r) a -> Sem (Reader i : r) a
-        reinterpretInput = reinterpret (\Input -> ask)
-
-runSDLEventInput :: Member (Lift IO) r => Signal (Input SDLInput : r) b -> Signal r b
+runSDLEventInput :: Member (Embed IO) r => Signal (Sem (Input SDLInput : r)) b -> Signal (Sem r) b
 runSDLEventInput = runInputWithSignal $ liftSem $ do
                     events <- SDL.pollEvents
                     pure $ SDLInput events
 
 
 
-getKeyState :: Member (Input SDLInput) r => (SDL.Keysym -> Bool) -> Signal r (Maybe SDL.Keysym)
+getKeyState :: Member (Input SDLInput) r => (SDL.Keysym -> Bool) -> Signal (Sem r) (Maybe SDL.Keysym)
 getKeyState filterKeysym = feedback (Nothing :: Maybe SDL.Keysym) $ liftSem $ do
     currentKeyState <- get
     sdlEvents :: [SDL.EventPayload] <- fmap SDL.eventPayload . rawInput <$> input

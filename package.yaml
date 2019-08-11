@@ -28,9 +28,12 @@ dependencies:
 - transformers
 - polysemy
 - vector
+- mtl
+- apecs
 - JuicyPixels
 - massiv
 - storable-tuple
+- apecs-physics
 
 default-extensions:
   - OverloadedStrings
