@@ -7,10 +7,16 @@ module World where
 import Apecs
 import Apecs.Physics
 
-data Player = Player
+data Player = Player Double
 
 instance Component Player where
-  type Storage Player = Map Player
+  type Storage Player = Unique Player
 
+data BulletType = Straight
 
-makeWorld "World" [''Physics, ''Player]
+data Bullet = Bullet BulletType
+
+instance Component Bullet where
+  type Storage Bullet = Map Bullet
+
+makeWorld "World" [''Physics, ''Player, ''Bullet]
