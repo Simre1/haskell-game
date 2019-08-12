@@ -1,0 +1,3 @@
+[submodule "apecs"]
+	path = apecs
+	url = https://github.com/Simre1/apecs.git
