@@ -11,7 +11,6 @@ import Sigma.Signal
 import Control.Monad
 import Debug.Trace
 
-
 import World
 import Input
 import Bullets
@@ -25,8 +24,22 @@ playerSpeed = (*2) . \case
   (V2 (-1) (-1)) -> negate <$> V2 (sqrt 0.5) (sqrt 0.5)
   (V2 x y) -> V2 x y
 
-playerInitialize :: MonadIO m => SystemT World m Entity
-playerInitialize = newEntity (Player 0, KinematicBody, Position (V2 0 0))
+playerInitialize :: MonadIO m => SystemT World m ()
+playerInitialize = do
+  createCollisionHandler >>= newEntity
+  playerBody <- newEntity (Player 0, KinematicBody, Position (V2 0 0))
+  playerShape <- newEntity (Shape playerBody $ cRectangle $ V2 36 72, CollisionType 1, collisionFilter)
+  pure ()
+  where collisionFilter = CollisionFilter 1 (maskList [1]) (maskList [4])
+        createCollisionHandler = do
+          beginCB <- mkBeginCB $ \(Collision _ player bullet playerShape bulletShape) -> do
+            addPostStepCallback 0 $ do
+              destroy player (Proxy :: Proxy (Player, Body))
+              destroy playerShape (Proxy :: Proxy Shape)
+              destroy bullet (Proxy :: Proxy (Bullet, Body))
+              destroy bulletShape (Proxy :: Proxy Shape)
+            pure False
+          pure $ CollisionHandler (Between 1 4) (Just beginCB) Nothing Nothing Nothing
 
 playerStep :: (Member (Embed IO) r, Member (Input GameInput) r) => SystemT World (Sem r) ()
 playerStep = do

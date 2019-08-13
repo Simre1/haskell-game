@@ -33,15 +33,24 @@ renderEnemies = withInitialization loadEnemiesTexture $ \texture -> liftSem $
   forEachEnemy (renderEnemy texture)
   where
     renderEnemy :: Member Graphics r => Texture Any -> EnemyType -> V2 Double -> Sem r ()
-    renderEnemy texture ((Argo _)) pos =
-          render $ makeRenderInstruction
-                    8
-                    texture
-                    Nothing
-                    (Just $ Placed (round <$> pos - V2 20 20) $ Rectangle 40 40)
-                    0
-                    Nothing
-                    (V2 False False)
+    renderEnemy texture (Argo _) pos =
+      render $ makeRenderInstruction
+                8
+                texture
+                Nothing
+                (Just $ Placed (round <$> pos - V2 20 20) $ Rectangle 40 40)
+                0
+                Nothing
+                (V2 False False)
+    renderEnemy texture (Runex _ _) pos =
+      render $ makeRenderInstruction
+                8
+                texture
+                Nothing
+                (Just $ Placed (round <$> pos - V2 20 20) $ Rectangle 40 40)
+                0
+                Nothing
+                (V2 False False)
 
 loadEnemiesTexture :: Member Graphics r => Sem r (Texture Any)
 loadEnemiesTexture = makeTexture $ do

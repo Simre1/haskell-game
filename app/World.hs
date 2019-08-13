@@ -21,7 +21,7 @@ instance Component Bullet where
   type Storage Bullet = Map Bullet
 
 
-data EnemyType = Argo Int
+data EnemyType = Argo Int | Runex Int (Double, Double) deriving Eq
 
 data Enemy = Enemy EnemyType
 
