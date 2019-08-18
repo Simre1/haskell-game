@@ -6,6 +6,8 @@ module World where
 
 import Apecs
 import Apecs.Physics
+import System.Random
+
 
 data Player = Player Double
 
@@ -28,4 +30,9 @@ data Enemy = Enemy EnemyType
 instance Component Enemy where
   type Storage Enemy = Map Enemy
 
-makeWorld "World" [''Physics, ''Player, ''Bullet, ''Enemy]
+data ScenarioTimer = ScenarioTimer Int Int StdGen
+
+instance Component ScenarioTimer where
+  type Storage ScenarioTimer = Unique ScenarioTimer
+
+makeWorld "World" [''Physics, ''Player, ''Bullet, ''Enemy, ''ScenarioTimer]

@@ -5,7 +5,7 @@ module Sigma
   , doOnce
   , withInitialization
   , buildSignal
-  , liftSem
+  , liftAction
 
   ) where
 

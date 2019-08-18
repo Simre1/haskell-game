@@ -22,8 +22,8 @@ instance Applicative m => Applicative (Signal m) where
   (Signal step1) <*> (Signal step2) = buildSignal $ combine <$> step1 <*> step2
     where combine (v1, cont1) (v2, cont2) = (v1 v2, cont1 <*> cont2)
 
-liftSem :: Functor m => m a -> Signal m a
-liftSem sem = buildSignal $ (,liftSem sem) <$> sem
+liftAction :: Functor m => m a -> Signal m a
+liftAction sem = buildSignal $ (,liftAction sem) <$> sem
 
 feedback :: s -> Signal (Sem (State s : r)) a -> Signal (Sem r) a
 feedback initial signal = buildSignal $ do
@@ -42,7 +42,7 @@ readerSignal sig sig2 = Signal $ do
   pure (b, readerSignal cont1 cont2)
 
 signalAsk :: Member (Reader a) r => Signal (Sem r) a
-signalAsk = liftSem ask
+signalAsk = liftAction ask
 
 stateSignal :: Signal (Sem r) s -> Signal (Sem (State s : r)) b -> Signal (Sem r) (s, b)
 stateSignal sig sig2 = Signal $ do
@@ -52,7 +52,7 @@ stateSignal sig sig2 = Signal $ do
 
 
 signalGet :: Member (State s) r => Signal (Sem r) s
-signalGet = liftSem get
+signalGet = liftAction get
 
 signalPut :: Member (State s) r => Signal (Sem r) s -> Signal (Sem r) ()
 signalPut signal = buildSignal $ do

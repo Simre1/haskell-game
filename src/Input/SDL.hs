@@ -27,14 +27,14 @@ newtype SDLInput = SDLInput {rawInput :: [SDL.Event]}
 --         reinterpretInput = reinterpret (\Input -> ask)
 
 runSDLEventInput :: Member (Embed IO) r => Signal (Sem (Input SDLInput : r)) b -> Signal (Sem r) b
-runSDLEventInput = runInputWithSignal $ liftSem $ do
+runSDLEventInput = runInputWithSignal $ liftAction $ do
                     events <- SDL.pollEvents
                     pure $ SDLInput events
 
 
 
 getKeyState :: Member (Input SDLInput) r => (SDL.Keysym -> Bool) -> Signal (Sem r) (Maybe SDL.Keysym)
-getKeyState filterKeysym = feedback (Nothing :: Maybe SDL.Keysym) $ liftSem $ do
+getKeyState filterKeysym = feedback (Nothing :: Maybe SDL.Keysym) $ liftAction $ do
     currentKeyState <- get
     sdlEvents :: [SDL.EventPayload] <- fmap SDL.eventPayload . rawInput <$> input
     let keysym = foldl' foldKeysymState currentKeyState sdlEvents

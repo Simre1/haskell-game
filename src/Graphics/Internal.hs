@@ -111,10 +111,10 @@ runGraphics renderer signal = Signal $ do
   delayedTextureActions <- liftIO $ newIORef mempty
   renderObjectsMVar <- liftIO newEmptyMVar
 
-  tId <- liftIO . forkIO $ forever $ do
-    (delayedAction, textures, camera) <- takeMVar renderObjectsMVar
-    delayedAction
-    renderObjects renderer textures camera
+  --tId <- liftIO . forkIO $ forever $ do
+  --  (delayedAction, textures, camera) <- takeMVar renderObjectsMVar
+  --  delayedAction
+  --  renderObjects renderer textures camera
   let makeSig sig = Signal $ do
         liftIO $ writeIORef (dataRenderObjects graphicsData) mempty
         (b, cont) <- stepSignal sig
@@ -122,7 +122,12 @@ runGraphics renderer signal = Signal $ do
         camera <- liftIO $ readIORef (dataCamera graphicsData)
         delayedAction <- liftIO $ atomicModifyIORef' delayedTextureActions $ \actions -> (mempty, actions)
         liftIO $ tryTakeMVar renderObjectsMVar >> putMVar renderObjectsMVar (delayedAction,textures,camera)
+        liftIO $ delayedAction
+        liftIO $ renderObjects renderer textures camera
+
+        -- FIXME Rendering is currently done in the main thread!
         pure (b,makeSig cont)
+
   stepSignal (signalMorph (runGraphicsE (\newAction -> modifyIORef delayedTextureActions (>>newAction)) graphicsData) $ makeSig signal)
     where
       defCamera = Camera $ Placed (V2 0 0) $ newRectangle 800 600
@@ -130,6 +135,7 @@ runGraphics renderer signal = Signal $ do
         SDL.rendererRenderTarget renderer $= Nothing
         SDL.rendererDrawColor renderer $= SDL.V4 30 30 30 maxBound
         SDL.rendererLogicalSize renderer $= pure (toEnum <$> (camera ^. cameraArea . placedShape . rectangleDimensions))
+        SDL.rendererClipRect renderer $= pure (transformRectangle (Placed (V2 0 0) $ camera ^. cameraArea . placedShape))
         SDL.clear renderer
         liftIO $ mapM_ runRender (sortBy (\r1 r2 -> _riZIndex r1 `compare` _riZIndex r2) textures)
         SDL.present renderer
@@ -137,7 +143,7 @@ runGraphics renderer signal = Signal $ do
           where runRender (RenderInstruction _ (Texture _ sdlTexture _) srcRect destRect rotationDegrees rotationPoint (V2 flipX flipY)) =
                   let newDestRect = destRect <&> over placedPosition (adjustPointForRender camera) . over (placedShape . rectangleHeight) negate
                   in do
-                    SDL.copyEx renderer sdlTexture (transformRectangle<$>srcRect) (transformRectangle<$>newDestRect) (CDouble rotationDegrees) (SDL.P . fmap toEnum <$> rotationPoint) (V2 flipX (not flipY))
+                      SDL.copyEx renderer sdlTexture (transformRectangle<$>srcRect) (transformRectangle<$>newDestRect) (CDouble rotationDegrees) (SDL.P . fmap toEnum <$> rotationPoint) (V2 flipX (not flipY))
 
 
 

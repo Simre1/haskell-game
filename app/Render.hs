@@ -14,6 +14,9 @@ import Debug.Trace
 import Polysemy.State
 import Data.Function ((&))
 
+import Lens.Micro
+import Lens.Micro.Extras
+
 import Shapes2D
 import Data.Massiv.Array as M hiding ((!))
 import Control.Exception
@@ -23,13 +26,14 @@ import World
 import Player
 import Bullets
 import Enemies
+import Shapes2D
 
 
 renderWorld :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderWorld = renderPlayer *> renderBullets *> renderEnemies
+renderWorld = renderPlayerAndCamera *> renderBullets *> renderEnemies *> renderBackground
 
 renderEnemies :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderEnemies = withInitialization loadEnemiesTexture $ \texture -> liftSem $
+renderEnemies = withInitialization loadEnemiesTexture $ \texture -> liftAction $
   forEachEnemy (renderEnemy texture)
   where
     renderEnemy :: Member Graphics r => Texture Any -> EnemyType -> V2 Double -> Sem r ()
@@ -61,7 +65,7 @@ loadEnemiesTexture = makeTexture $ do
 
 
 renderBullets :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderBullets = withInitialization loadBulletTexture $ \texture -> liftSem $
+renderBullets = withInitialization loadBulletTexture $ \texture -> liftAction $
   forEachBullet (renderBullet texture)
   where
     renderBullet :: Member Graphics r => Texture Any -> BulletType -> V2 Double -> Sem r ()
@@ -78,14 +82,15 @@ renderBullets = withInitialization loadBulletTexture $ \texture -> liftSem $
 loadBulletTexture :: Member Graphics r => Sem r (Texture Any)
 loadBulletTexture = makeTexture $ do
   texture <- createStaticTexture $ Rectangle 12 12
-  let img = makeArray Seq (Sz (Ix2 12 12)) $ \(Ix2 x y) -> let v = toEnum (abs (x - y)) in (v,v,v,255)
+  let img = makeArray Seq (Sz (Ix2 12 12)) $ \(Ix2 _ _) -> (255,255,255,255)
   updateStaticTexture texture Nothing img
   pure $ toAnyTexture texture
 
-renderPlayer :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderPlayer = withInitialization loadPlayerTexture $ \texture -> readerSignal getPlayerPosition . feedback (0 :: Int) . liftSem $ do
-  playerPos <- ask @(V2 Double)
+renderPlayerAndCamera :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
+renderPlayerAndCamera = withInitialization loadPlayerTexture $ \texture -> readerSignal getPlayerPositionSignal . feedback (0 :: Int) . liftAction $ do
+  playerPos@(V2 _ pY) <- ask @(V2 Double)
   frameCount <- get @Int
+  modifyCamera $ cameraArea . placedPosition %~ (\(V2 x _) -> V2 x $ round pY - 160)
   let renderInstruction shipPosOnTexture = makeRenderInstruction
           10
           texture
@@ -120,3 +125,27 @@ loadPlayerTexture = makeTexture $ do
   updateStaticTexture staticTexture Nothing mergedImage
   pure $ toAnyTexture staticTexture
     where emptyImage = M.replicate Seq (Sz (Ix2 108 72)) $ (255,255,255,255)
+
+renderBackground :: (Member (Embed IO) r, Member Graphics r) => Signal (Sem r) ()
+renderBackground = withInitialization loadBackground $ \background -> liftAction $ do
+  (V2 _ cameraY) <- view (cameraArea . placedPosition) <$> getCamera
+  render $ makeRenderInstruction
+            1
+            background
+            (Just $ Placed (V2 0 $ 1200 - calcYOnTexture cameraY) $ Rectangle 480 480)
+            (Just $ Placed (V2 0 $ calcYOnTexture cameraY) $ Rectangle 480 480)
+            0
+            Nothing
+            (V2 False False)
+  where calcYOnTexture cameraY =
+          (cameraY+60) `rem` 12000
+
+loadBackground :: Member Graphics r => Sem r (Texture Any)
+loadBackground = makeTexture $ do
+  img1 <- loadImage "media/background1.png"
+  staticTexture <- createStaticTexture (Rectangle 480 12000)
+  updateStaticTexture staticTexture Nothing $ case img1 of
+    (Right img) -> img
+    (Left err) -> traceShow err emptyImage
+  pure $ toAnyTexture staticTexture
+    where emptyImage = M.replicate Seq (Sz (Ix2 480 12000)) $ (255,255,255,255)
