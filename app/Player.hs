@@ -11,7 +11,7 @@ import Sigma.Signal
 import Control.Monad
 import Debug.Trace
 
-import World
+import Types
 import Input
 import Bullets
 

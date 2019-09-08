@@ -12,7 +12,7 @@ import Control.Monad
 import Debug.Trace
 
 import Bullets
-import World
+import Types
 
 spawnEnemy :: MonadIO m => EnemyType -> V2 Double -> SystemT World m ()
 spawnEnemy enemyType pos =  void $ case enemyType of

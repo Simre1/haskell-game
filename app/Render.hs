@@ -3,149 +3,124 @@
 module Render where
 
 import Effect.Apecs
-import Apecs.Physics hiding (ask, get)
+import Apecs.Physics hiding (ask, get, asks)
 import Control.Monad.IO.Class
 import Polysemy as P
 import Polysemy.Reader
 import Polysemy.Input
-import Effect.Graphics
 import Sigma.Signal
 import Debug.Trace
 import Polysemy.State
 import Data.Function ((&))
+import Control.Lens
+import qualified Data.Vector.Storable as V
+import Data.Text (Text, pack)
+import Debug.Trace
 
-import Lens.Micro
-import Lens.Micro.Extras
-
-import Shapes2D
-import Data.Massiv.Array as M hiding ((!))
-import Control.Exception
 import Control.Monad
-
-import World
+import qualified Graphics.GPipe.Context.GLFW as GLFW
+import Graphics.GPipe
+import GPipe.Image
+import Debug.Trace
+import GPipe.Interface
+import Data.Word
+import Types
 import Player
 import Bullets
 import Enemies
-import Shapes2D
+
+data RenderData = RenderData
+  { playerShader :: (V2 Int -> MyWindowAction ())
+  , argoShader :: (V2 Int -> MyWindowAction ())
+  }
+
+initializeRenderData :: P.Member (MyWindowIO) r => Sem r RenderData
+initializeRenderData = executeWindowAction $ RenderData <$> makePlayerShader <*> makeArgoShader
 
 
-renderWorld :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderWorld = renderPlayerAndCamera *> renderBullets *> renderEnemies *> renderBackground
+renderWorld :: P.Members [Reader RenderData, ApecsSystem World, Embed IO, MyWindowIO] r => Signal (Sem r) ()
+renderWorld = liftAction $ do
+  liftIO $ print "rendering"
+  executeWindowAction clearBuffer
+  player
+  enemies
+  executeWindowAction swapBuffers
 
-renderEnemies :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderEnemies = withInitialization loadEnemiesTexture $ \texture -> liftAction $
-  forEachEnemy (renderEnemy texture)
+player :: P.Members [Reader RenderData, (ApecsSystem World), Embed IO, MyWindowIO] r => Sem r ()
+player = do
+  pos <- executeApecsSystem @World getPlayerPosition
+  runShader <- asks playerShader
+  executeWindowAction$ do
+    runShader (round <$> pos - V2 18 36)
+
+enemies :: P.Members [Reader RenderData, (ApecsSystem World), Embed IO, MyWindowIO] r => Sem r ()
+enemies = liftIO (print "test enemies") *> forEachEnemy renderEnemy
   where
-    renderEnemy :: Member Graphics r => Texture Any -> EnemyType -> V2 Double -> Sem r ()
-    renderEnemy texture (Argo _) pos =
-      render $ makeRenderInstruction
-                8
-                texture
-                Nothing
-                (Just $ Placed (round <$> pos - V2 20 20) $ Rectangle 40 40)
-                0
-                Nothing
-                (V2 False False)
-    renderEnemy texture (Runex _ _) pos =
-      render $ makeRenderInstruction
-                8
-                texture
-                Nothing
-                (Just $ Placed (round <$> pos - V2 20 20) $ Rectangle 40 40)
-                0
-                Nothing
-                (V2 False False)
+    renderEnemy :: P.Members [Embed IO, Reader RenderData, MyWindowIO] r => EnemyType -> V2 Double -> Sem r ()
+    renderEnemy enemyType position = case enemyType of
+      (Argo _) -> do
+        liftIO $ print "Test"
+        shadeArgo <- asks argoShader
+        executeWindowAction $ shadeArgo (round <$> position - V2 20 20)
+      _ -> liftIO $ print "Something went wrong"
 
-loadEnemiesTexture :: Member Graphics r => Sem r (Texture Any)
-loadEnemiesTexture = makeTexture $ do
-  texture <- createStaticTexture $ Rectangle 40 40
-  let img = makeArray Seq (Sz (Ix2 40 40)) $ \(Ix2 x y) -> let v = toEnum $ 3 * (30 - abs (20 - x)) + 3 * (30 - abs (20 - y)) in (v,v,v,255)
-  updateStaticTexture texture Nothing img
-  pure $ toAnyTexture texture
+swapBuffers :: MyWindowAction ()
+swapBuffers = makeWindowAction $ \win -> swapWindowBuffers win
+
+clearBuffer :: MyWindowAction ()
+clearBuffer = makeWindowAction $ \win -> render $ clearWindowColor win 0.5
+
+adjustViewPort :: V2 Int -> ViewPort -> ViewPort
+adjustViewPort (V2 winX winY) (ViewPort (V2 posX posY) (V2 logicalSizeX logicalSizeY)) =
+    let sizeY = winY * logicalSizeY `quot` 480
+        sizeX = winY * logicalSizeX `quot` 480
+        newPosY = winY * posY `quot` 480
+        newPosX = ((winX - winY) `quot` 2) + winY * posX `quot` 480
+    in (ViewPort (V2 newPosX newPosY) (V2 sizeX sizeY))
 
 
-renderBullets :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderBullets = withInitialization loadBulletTexture $ \texture -> liftAction $
-  forEachBullet (renderBullet texture)
-  where
-    renderBullet :: Member Graphics r => Texture Any -> BulletType -> V2 Double -> Sem r ()
-    renderBullet texture (Straight) pos =
-          render $ makeRenderInstruction
-                    5
-                    texture
-                    Nothing
-                    (Just $ Placed (round <$> pos - V2 6 6) $ Rectangle 12 12)
-                    0
-                    Nothing
-                    (V2 False False)
+makePlayerShader :: MyWindowAction (V2 Int -> MyWindowAction ())
+makePlayerShader = makeWindowAction $ \win -> do
+  let vertices = [V2 (-1) (-1), V2 1 (-1), V2 (-1) 1, V2 1 1]
+  vertexBuffer :: Buffer (B2 Float) <- newBuffer 4
+  writeBuffer vertexBuffer 0 vertices
+  tex <- newTexture2D RGBA8 (V2 36 72) 1
+  Image _ imgData <- liftIO $ readImage2 "/home/simon/Projects/glGame/media/ship1.bmp"
+  writeTexture2D tex 0 (V2 0 0) (V2 36 72) (reverse $ V.toList imgData)
+  shader <- compileShader $ do
+    primitiveStream <- toPrimitiveStream fst
+    let primitiveStream2 = fmap (\(V2 x y) -> (V4 x y 0 1, ((V2 x y + V2 1 1) / V2 2 2))) primitiveStream
+    fragmentStream <- rasterize (\(_,(pos, winSize)) -> (Front, adjustViewPort winSize $ ViewPort pos ((V2 36 72)), DepthRange 0 1)) primitiveStream2
+    let filter = SamplerNearest
+        edge = (pure ClampToEdge, undefined)
+    samp <- newSampler2D (const (tex, filter, edge))
+    let sampleTexture = sample2D samp SampleAuto Nothing Nothing
+        fragmentStream2 = fmap sampleTexture fragmentStream
 
-loadBulletTexture :: Member Graphics r => Sem r (Texture Any)
-loadBulletTexture = makeTexture $ do
-  texture <- createStaticTexture $ Rectangle 12 12
-  let img = makeArray Seq (Sz (Ix2 12 12)) $ \(Ix2 _ _) -> (255,255,255,255)
-  updateStaticTexture texture Nothing img
-  pure $ toAnyTexture texture
+    drawWindowColor (const (win, ContextColorOption blending (pure True))) (fragmentStream2)
+  pure $ \pos -> makeWindowAction $ \_ -> do
+    winSize <- getFrameBufferSize win
+    render $ do
+      vertexArray <- newVertexArray vertexBuffer
+      primitiveArray <- pure $ toPrimitiveArray TriangleStrip vertexArray
+      shader (primitiveArray, (pos, winSize))
+  where blending = BlendRgbAlpha (FuncAdd, FuncAdd) (BlendingFactors SrcAlpha OneMinusSrcAlpha, BlendingFactors SrcAlpha OneMinusSrcAlpha) (V4 (-1) (-1) (-1) 1)
 
-renderPlayerAndCamera :: P.Members [(ApecsSystem World), Embed IO, Graphics] r => Signal (Sem r) ()
-renderPlayerAndCamera = withInitialization loadPlayerTexture $ \texture -> readerSignal getPlayerPositionSignal . feedback (0 :: Int) . liftAction $ do
-  playerPos@(V2 _ pY) <- ask @(V2 Double)
-  frameCount <- get @Int
-  modifyCamera $ cameraArea . placedPosition %~ (\(V2 x _) -> V2 x $ round pY - 160)
-  let renderInstruction shipPosOnTexture = makeRenderInstruction
-          10
-          texture
-          shipPosOnTexture
-          (Just $ Placed (round <$> playerPos - V2 16 36) $ Rectangle 36 72)
-          0
-          Nothing
-          (V2 False False)
-  render . renderInstruction $ chooseImage frameCount
-  put (succ frameCount)
-  when (frameCount == 20) $ put (0 :: Int)
-  where ship1 = (Just $ Placed (V2 0 0) $ Rectangle 36 72)
-        ship2 = (Just $ Placed (V2 36 0) $ Rectangle 36 72)
-        ship3 = (Just $ Placed (V2 72 0) $ Rectangle 36 72)
-        chooseImage frameCount
-          | frameCount < 6 = ship1
-          | frameCount < 11 = ship2
-          | frameCount < 16 = ship1
-          | frameCount < 21 = ship3
-          | otherwise = ship1
-
-loadPlayerTexture :: Member Graphics r => Sem r (Texture Any)
-loadPlayerTexture = makeTexture $ do
-  img1 <- loadImage "media/ship1.bmp"
-  img2 <- loadImage "media/ship2.bmp"
-  img3 <- pure $ flipImage (V2 True False) <$> img2
-  let (mergedImage :: Image) = either
-        (const emptyImage)
-        id
-        (fmap (computeAs S) $ join $ appendM (Dim 2) <$> (fmap (computeAs S) . join $ appendM (Dim 2) <$> img1 <*> img2) <*> img3)
-  staticTexture <- createStaticTexture (Rectangle 108 72)
-  updateStaticTexture staticTexture Nothing mergedImage
-  pure $ toAnyTexture staticTexture
-    where emptyImage = M.replicate Seq (Sz (Ix2 108 72)) $ (255,255,255,255)
-
-renderBackground :: (Member (Embed IO) r, Member Graphics r) => Signal (Sem r) ()
-renderBackground = withInitialization loadBackground $ \background -> liftAction $ do
-  (V2 _ cameraY) <- view (cameraArea . placedPosition) <$> getCamera
-  render $ makeRenderInstruction
-            1
-            background
-            (Just $ Placed (V2 0 $ 1200 - calcYOnTexture cameraY) $ Rectangle 480 480)
-            (Just $ Placed (V2 0 $ calcYOnTexture cameraY) $ Rectangle 480 480)
-            0
-            Nothing
-            (V2 False False)
-  where calcYOnTexture cameraY =
-          (cameraY+60) `rem` 12000
-
-loadBackground :: Member Graphics r => Sem r (Texture Any)
-loadBackground = makeTexture $ do
-  img1 <- loadImage "media/background1.png"
-  staticTexture <- createStaticTexture (Rectangle 480 12000)
-  updateStaticTexture staticTexture Nothing $ case img1 of
-    (Right img) -> img
-    (Left err) -> traceShow err emptyImage
-  pure $ toAnyTexture staticTexture
-    where emptyImage = M.replicate Seq (Sz (Ix2 480 12000)) $ (255,255,255,255)
+makeArgoShader :: MyWindowAction (V2 Int -> MyWindowAction ())
+makeArgoShader = makeWindowAction $ \win -> do
+  let vertices = [V2 (-1) (-1), V2 1 (-1), V2 (-1) 1, V2 1 1]
+  vertexBuffer :: Buffer (B2 Float) <- newBuffer 4
+  writeBuffer vertexBuffer 0 vertices
+  shader <- compileShader $ do
+    primitiveStream <- fmap (\(V2 x y) -> (V4 x y 0 1, V2 x y)) <$> toPrimitiveStream fst
+    fragmentStream <- rasterize (\(_,(pos, winSize)) -> (Front, adjustViewPort winSize $ ViewPort pos ((V2 40 40)), DepthRange 0 1)) primitiveStream
+    drawWindowColor (const (win, ContextColorOption NoBlending (pure True))) $
+      (\(V2 x y) -> V4 x y 0 1) <$> fragmentStream
+  pure $ \pos -> makeWindowAction $ \_ -> do
+    winSize <- getFrameBufferSize win
+    liftIO $ print pos
+    render $ do
+      vertexArray <- newVertexArray vertexBuffer
+      primitiveArray <- pure $ toPrimitiveArray TriangleStrip vertexArray
+      shader (primitiveArray, (pos, winSize))
+--  where blending = BlendRgbAlpha (FuncAdd, FuncAdd) (BlendingFactors SrcAlpha OneMinusSrcAlpha, BlendingFactors SrcAlpha OneMinusSrcAlpha) (V4 (-1) (-1) (-1) 1)

@@ -6,7 +6,16 @@ module Sigma
   , withInitialization
   , buildSignal
   , liftAction
-
+  , limitFramerate
+  , reactimate
+  , reactimateUntilTrue
+  , switch
+  , reactimate
+  , reactimateUntilTrue
+  , limitFramerate
   ) where
 
 import Sigma.Signal
+import Sigma.Reactimate
+import Sigma.Framerate
+import Sigma.Switch

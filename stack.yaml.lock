@@ -5,20 +5,6 @@
 
 packages:
 - completed:
-    hackage: chiphunk-0.1.0.3@sha256:0c88d66e5b66ffd0b3bd70fc63ff00be0ab0757c26f1315a1b6f788852e14a6c,4870
-    pantry-tree:
-      size: 6384
-      sha256: cfdae0ee139b7d41cca8e947aae2fa8d9d1ce8aba038df02a555abb24a22bd01
-  original:
-    hackage: chiphunk-0.1.0.3
-- completed:
-    hackage: vector-space-0.15@sha256:1c290708d30713d4c002dbe61b43e8e49a3675debe67665568a08f07734da4a4,2128
-    pantry-tree:
-      size: 724
-      sha256: 7fb38757154dc1f886b2ff601ae2f8bfbabd0c3e3e2eeb087169bc232730b6b5
-  original:
-    hackage: vector-space-0.15
-- completed:
     hackage: polysemy-1.0.0.0@sha256:5a4596f7ff06db81fc7e2f121fbe481871c348d3c5481297c6af983b728b075c,5509
     pantry-tree:
       size: 3044

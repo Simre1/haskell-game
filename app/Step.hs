@@ -11,22 +11,27 @@ import Sigma.Signal
 import Control.Monad
 import Debug.Trace
 
-import World
+import Types
 import Input
 import Player
 import Enemies
 import Bullets
 import Scenario
+import Collision
 
+initializeGameState :: Members [Embed IO, ApecsSystem World, Input GameInput] r => Sem r ()
+initializeGameState = executeApecsSystem @World $ do
+  initializePlayer
+  initializeScenarios
+  initializeCollisionHandlers
 
-step :: Members [Embed IO, ApecsSystem World, Input GameInput] r => Sem r ()
-step = executeApecsSystem @World $ do
+step :: Members [Embed IO, ApecsSystem World, Input GameInput] r => Signal (Sem r) ()
+step = liftAction $ executeApecsSystem @World $ do
   stepPlayer
   stepEnemies
   stepScenarios
   stepPhysics (1/60)
   deleteOutOfBounds
-
 
 
 deleteOutOfBounds :: (MonadIO m) => SystemT World m ()

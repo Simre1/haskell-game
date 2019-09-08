@@ -16,15 +16,12 @@ dependencies:
 - base >= 4.7 && < 5
 - text
 - bytestring
-- sdl2
-- microlens
-- microlens-th
+- lens
 - linear
 - StateVar
 - random
 - containers
 - colour
-- chiphunk
 - transformers
 - polysemy
 - vector
@@ -34,6 +31,15 @@ dependencies:
 - massiv
 - storable-tuple
 - apecs-physics
+- GPipe
+- GPipe-GLFW
+- GLFW-b
+- exception-transformers
+- Boolean
+- cpu
+- bytestring-conversion
+- binary
+- file-embed
 
 default-extensions:
   - OverloadedStrings

@@ -17,7 +17,6 @@ import Control.Monad
 
 data ApecsSystem w (m :: * -> *) a where
   ExecuteApecsSystem :: SystemT w m a -> ApecsSystem w m a
---  DoAtTheEnd :: SystemT w IO () -> ApecsSystem w m a
 
 makeSem ''ApecsSystem
 

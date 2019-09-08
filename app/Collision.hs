@@ -11,7 +11,7 @@ import Sigma.Signal
 import Control.Monad
 import Debug.Trace
 
-import World
+import Types
 
 initializeCollisionHandlers :: MonadIO m => SystemT World m ()
 initializeCollisionHandlers = do

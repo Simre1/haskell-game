@@ -3,12 +3,12 @@ resolver: lts-13.27
 packages:
 - apecs/apecs
 - apecs/apecs-physics
+- GPipe-Core/GPipe-Core
+- GPipe-GLFW/GPipe-GLFW
 - .
 
 
 extra-deps:
-- chiphunk-0.1.0.3
-- vector-space-0.15
 - polysemy-1.0.0.0
 - sdl2-2.5.0.0
 - first-class-families-0.5.0.0

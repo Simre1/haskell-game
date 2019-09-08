@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c1fedcf9319df8cbee3cc96ce8bb6ee4a92ecff65c32a6af5dc87236caeba43f
+-- hash: eed05c8bca1306d1c2b3ee95e7d81ddf19d6be58e627f91e69e62df8d11381b5
 
 name:           gameEngine
 version:        0.1.0.0
@@ -29,13 +29,8 @@ library
   exposed-modules:
       Aux.Polysemy.Input
       Effect.Apecs
-      Effect.Graphics
-      Effect.Input
-      Graphics.Image
-      Graphics.Internal
-      Graphics.TextureBuilder
-      Input.SDL
-      Shapes2D
+      GPipe.Image
+      GPipe.Interface
       Sigma
       Sigma.Framerate
       Sigma.Reactimate
@@ -47,23 +42,29 @@ library
       src
   default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   build-depends:
-      JuicyPixels
+      Boolean
+    , GLFW-b
+    , GPipe
+    , GPipe-GLFW
+    , JuicyPixels
     , StateVar
     , apecs
     , apecs-physics
     , base >=4.7 && <5
+    , binary
     , bytestring
-    , chiphunk
+    , bytestring-conversion
     , colour
     , containers
+    , cpu
+    , exception-transformers
+    , file-embed
+    , lens
     , linear
     , massiv
-    , microlens
-    , microlens-th
     , mtl
     , polysemy
     , random
-    , sdl2
     , storable-tuple
     , text
     , transformers
@@ -81,31 +82,37 @@ executable gameEngine-exe
       Render
       Scenario
       Step
-      World
+      Types
       Paths_gameEngine
   hs-source-dirs:
       app
   default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      JuicyPixels
+      Boolean
+    , GLFW-b
+    , GPipe
+    , GPipe-GLFW
+    , JuicyPixels
     , StateVar
     , apecs
     , apecs-physics
     , base >=4.7 && <5
+    , binary
     , bytestring
-    , chiphunk
+    , bytestring-conversion
     , colour
     , containers
+    , cpu
+    , exception-transformers
+    , file-embed
     , gameEngine
+    , lens
     , linear
     , massiv
-    , microlens
-    , microlens-th
     , mtl
     , polysemy
     , random
-    , sdl2
     , storable-tuple
     , text
     , transformers
@@ -122,24 +129,30 @@ test-suite gameEngine-test
   default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -fplugin=Polysemy.Plugin
   build-depends:
-      JuicyPixels
+      Boolean
+    , GLFW-b
+    , GPipe
+    , GPipe-GLFW
+    , JuicyPixels
     , StateVar
     , apecs
     , apecs-physics
     , base >=4.7 && <5
+    , binary
     , bytestring
-    , chiphunk
+    , bytestring-conversion
     , colour
     , containers
+    , cpu
+    , exception-transformers
+    , file-embed
     , gameEngine
+    , lens
     , linear
     , massiv
-    , microlens
-    , microlens-th
     , mtl
     , polysemy
     , random
-    , sdl2
     , storable-tuple
     , text
     , transformers

@@ -20,8 +20,7 @@ module Shapes2D
 
 import Linear.V2 as V2
 import Linear.V4
-import Lens.Micro
-import Lens.Micro.TH
+import Lens
 
 
 data Circle x = Circle {_circleRadius :: x} deriving (Eq, Functor, Show)

@@ -8,7 +8,7 @@ import Polysemy.Input
 import Sigma.Signal
 import Control.Monad
 import Debug.Trace
-import World
+import Types
 
 
 forEachBullet :: P.Members [Embed IO, ApecsSystem World] r =>

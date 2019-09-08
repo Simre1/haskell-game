@@ -8,7 +8,7 @@ import Polysemy.Input
 import Sigma.Signal
 import Control.Monad
 import Debug.Trace
-import World
+import Types
 import Control.Arrow (second)
 import System.Random
 import Enemies

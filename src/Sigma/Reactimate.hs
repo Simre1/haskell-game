@@ -5,10 +5,10 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Polysemy
 
-reactimateUntilTrue :: Signal (Sem r) Bool -> Sem r ()
+reactimateUntilTrue :: Monad m => Signal m Bool -> m ()
 reactimateUntilTrue signal = do
   (shouldClose,cont) <- stepSignal signal
   unless shouldClose $ reactimateUntilTrue cont
 
-reactimate :: Signal (Sem r) () -> Sem r ()
+reactimate :: Monad m => Signal m () -> m ()
 reactimate signal = snd <$> stepSignal signal >>= reactimate
