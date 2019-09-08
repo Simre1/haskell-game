@@ -1,0 +1,23 @@
+dist: xenial
+language: generic
+cache:
+  directories:
+  - $HOME/.stack # XXX what about .ghc and .cabal?
+addons:
+  apt:
+    packages:
+    - libgmp-dev # XXX for stack
+    - libglfw3-dev # XXX for GPipe
+# build once for each subppackage
+env:
+- PACKAGEDIR="GPipe-GLFW/"
+- PACKAGEDIR="Smoketests/"
+before_install:
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+- cd ${PACKAGEDIR}
+install:
+- stack --no-terminal --install-ghc test --only-dependencies
+script:
+- stack --no-terminal test --no-run-tests --haddock --no-haddock-deps

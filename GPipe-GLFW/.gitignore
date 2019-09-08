@@ -1,0 +1,7 @@
+cabal.sandbox.config
+dist/
+dist-*
+.ghc.environment.*
+.stack-work/
+.cabal-sandbox/
+*.swp
