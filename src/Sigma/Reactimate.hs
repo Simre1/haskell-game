@@ -1,14 +1,12 @@
 module Sigma.Reactimate (reactimate, reactimateUntilTrue) where
 
-import Sigma.Signal
-import Control.Monad
-import Control.Monad.IO.Class
-import Polysemy
+import Sigma.Signal (Signal, stepSignal)
+import Control.Monad (unless)
 
-reactimateUntilTrue :: Signal (Sem r) Bool -> Sem r ()
+reactimateUntilTrue :: Monad m => Signal m Bool -> m ()
 reactimateUntilTrue signal = do
   (shouldClose,cont) <- stepSignal signal
   unless shouldClose $ reactimateUntilTrue cont
 
-reactimate :: Signal (Sem r) () -> Sem r ()
+reactimate :: Monad m => Signal m () -> m ()
 reactimate signal = snd <$> stepSignal signal >>= reactimate

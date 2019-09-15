@@ -1,80 +1,42 @@
-name:                gameEngine
+name:                haskell-game
 version:             0.1.0.0
-github:              "githubuser/gameEngine"
-license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2019 Author name here"
+github:              "Simre1/haskell-game"
+license:             MIT
+author:              "Simre"
+copyright:           "2019 Simre"
 
 extra-source-files:
 - README.md
-- ChangeLog.md
 
 description:         Please see the README on GitHub at <https://github.com/githubuser/gameEngine#readme>
 
 dependencies:
 - base >= 4.7 && < 5
 - text
-- bytestring
-- sdl2
-- microlens
-- microlens-th
 - linear
-- StateVar
 - random
-- containers
-- colour
-- chiphunk
-- transformers
 - polysemy
+- polysemy-plugin
 - vector
-- mtl
 - apecs
 - JuicyPixels
-- massiv
-- storable-tuple
 - apecs-physics
+- GPipe
+- GPipe-GLFW
+- Boolean
 
-default-extensions:
-  - OverloadedStrings
-  - FlexibleContexts
-  - FlexibleInstances
-  - LambdaCase
-  - ExistentialQuantification
-  - RankNTypes
-  - GADTs
-  - ScopedTypeVariables
-  - TypeOperators
-  - DataKinds
-  - KindSignatures
-  - DeriveFunctor
-  - GeneralizedNewtypeDeriving
-  - MultiParamTypeClasses
-  - TypeApplications
-  - TupleSections
 
 library:
   source-dirs: [src]
 
 executables:
-  gameEngine-exe:
+  haskell-game-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    dependencies:
-    - gameEngine
-
-tests:
-  gameEngine-test:
-    main:                Spec.hs
-    source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
     - -fplugin=Polysemy.Plugin
     dependencies:
-    - gameEngine
+    - haskell-game

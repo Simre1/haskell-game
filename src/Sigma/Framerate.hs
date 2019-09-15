@@ -1,26 +1,25 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
+
 module Sigma.Framerate (limitFramerate) where
 
-
-import GHC.Clock
-import Sigma.Signal
-import Control.Concurrent
-import System.Mem
-import Data.IORef
-import Control.Monad.IO.Class
-import Polysemy
+import Sigma.Signal (Signal, buildSignal, stepSignal)
+import GHC.Clock (getMonotonicTimeNSec)
+import Control.Concurrent (threadDelay)
+import Control.Monad.IO.Class (liftIO, MonadIO)
 
 
-limitFramerate :: Member (Embed IO) r => Int -> Signal (Sem r) b -> Signal (Sem r) b
-limitFramerate fps signal = Signal $ do
+limitFramerate :: MonadIO m => Int -> Signal m b -> Signal m b
+limitFramerate fps signal = buildSignal $ do
   t <- liftIO getMonotonicTimeNSec
   d <- pure $ toEnum (1000000000 `quot` fps)
-  let newSig = Signal $ do
+  let newSig = buildSignal $ do
         (b, cont) <- stepSignal signal
         return (b, cont)
   stepSignal (makeSignal d (t-d) signal)
 
-  where makeSignal d t1 s = Signal $ do
-          (b, cont) <-  id $! (stepSignal s)
+  where makeSignal d t1 s = buildSignal $ do
+          (!b, cont) <- stepSignal s
           t2 <- liftIO getMonotonicTimeNSec
           let diff = t2 - t1
           let waitTime = if diff >= d

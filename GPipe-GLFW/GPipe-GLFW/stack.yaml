@@ -1,0 +1,5 @@
+packages:
+- '.'
+resolver: lts-13.27
+extra-deps:
+- GPipe-2.2.4

@@ -1,0 +1,6 @@
+resolver: lts-13.27
+extra-deps:
+- ../GPipe-GLFW
+- github: plredmond/GPipe-Core
+  commit: monadfail
+  subdirs: [ GPipe-Core ]

@@ -1,0 +1,63 @@
+name:                polysemy-plugin
+version:             0.2.3.0
+github:              "isovector/polysemy"
+license:             BSD3
+author:              "Sandy Maguire"
+maintainer:          "sandy@sandymaguire.me"
+copyright:           "2019 Sandy Maguire"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+synopsis:            Disambiguate obvious uses of effects.
+category:            Polysemy
+
+description:         Please see the README on GitHub at <https://github.com/isovector/polysemy/tree/master/polysemy-plugin#readme>
+
+dependencies:
+- base >= 4.9 && < 5
+- ghc >= 8.4.4 && < 9
+- ghc-tcplugins-extra >= 0.3 && < 0.4
+- polysemy >= 0.6
+- syb >= 0.7 && < 0.8
+- transformers >= 0.5.2.0 && < 0.6
+- containers >= 0.5 && < 0.7
+
+library:
+  source-dirs: src
+
+tests:
+  polysemy-plugin-test:
+    main:                Main.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -fplugin=Polysemy.Plugin
+    build-tools:
+    - hspec-discover
+    dependencies:
+    - polysemy >= 1.2.0.0
+    - polysemy-plugin
+    - hspec >= 2.6.0 && < 3
+    - should-not-typecheck >= 2.1.0 && < 3
+    - inspection-testing >= 0.4.2 && < 0.5
+    - doctest >= 0.16.0.1 && < 0.17
+
+default-extensions:
+  - DataKinds
+  - DeriveFunctor
+  - FlexibleContexts
+  - GADTs
+  - LambdaCase
+  - PolyKinds
+  - RankNTypes
+  - ScopedTypeVariables
+  - StandaloneDeriving
+  - TypeApplications
+  - TypeOperators
+  - TypeFamilies
+
+  - UnicodeSyntax
