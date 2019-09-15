@@ -1,9 +1,7 @@
 module Sigma.Reactimate (reactimate, reactimateUntilTrue) where
 
-import Sigma.Signal
-import Control.Monad
-import Control.Monad.IO.Class
-import Polysemy
+import Sigma.Signal (Signal, stepSignal)
+import Control.Monad (unless)
 
 reactimateUntilTrue :: Monad m => Signal m Bool -> m ()
 reactimateUntilTrue signal = do

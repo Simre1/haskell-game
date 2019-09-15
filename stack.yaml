@@ -1,22 +1,18 @@
-resolver: lts-13.27
+resolver: lts-14.5
 
 packages:
 - apecs/apecs
 - apecs/apecs-physics
 - GPipe-Core/GPipe-Core
 - GPipe-GLFW/GPipe-GLFW
+- polysemy
+- polysemy/polysemy-plugin
 - .
 
 
 extra-deps:
-- polysemy-1.0.0.0
-- sdl2-2.5.0.0
 - first-class-families-0.5.0.0
 - th-abstraction-0.3.1.0
-- unagi-chan-0.4.1.0
 - type-errors-0.2.0.0
-- loopbreaker-0.1.1.0
-- ratio-int-0.1.2
-- massiv-0.3.6.0
-- scheduler-1.4.1
 - type-errors-pretty-0.0.0.0
+- unagi-chan-0.4.1.2

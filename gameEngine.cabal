@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eed05c8bca1306d1c2b3ee95e7d81ddf19d6be58e627f91e69e62df8d11381b5
+-- hash: 698834f630f6f9b1945c165a44bacbb0925fdef4b91d35896b1b126cf7ccac13
 
 name:           gameEngine
 version:        0.1.0.0
@@ -27,20 +27,21 @@ source-repository head
 
 library
   exposed-modules:
-      Aux.Polysemy.Input
-      Effect.Apecs
-      GPipe.Image
-      GPipe.Interface
+      ECS.Apecs
+      ECS.Physics
+      Graphics.ReadImage
+      Graphics.Shader.ViewPort
       Sigma
       Sigma.Framerate
+      Sigma.Polysemy.Input
       Sigma.Reactimate
       Sigma.Signal
       Sigma.Switch
+      Window.GPipe
   other-modules:
       Paths_gameEngine
   hs-source-dirs:
       src
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   build-depends:
       Boolean
     , GLFW-b
@@ -64,6 +65,7 @@ library
     , massiv
     , mtl
     , polysemy
+    , polysemy-plugin
     , random
     , storable-tuple
     , text
@@ -74,59 +76,29 @@ library
 executable gameEngine-exe
   main-is: Main.hs
   other-modules:
-      Bullets
-      Collision
-      Enemies
-      Input
-      Player
-      Render
-      Scenario
-      Step
-      Types
+      GameInput
+      Level.Initialize.CollisionHandler
+      Level.Initialize.Player
+      Level.Scene
+      Level.Spawn.Bullet
+      Level.Spawn.Enemy
+      Level.Step.Delete
+      Level.Step.Enemy
+      Level.Step.Physics
+      Level.Step.Player
+      Level.Step.Scenario
+      Level.World
+      Level.WorldAccessors
+      MyWindow
+      Render.Level.All
+      Render.Level.Background
+      Render.Level.Bullet
+      Render.Level.Enemy
+      Render.Level.Player
+      SceneManager
       Paths_gameEngine
   hs-source-dirs:
       app
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      Boolean
-    , GLFW-b
-    , GPipe
-    , GPipe-GLFW
-    , JuicyPixels
-    , StateVar
-    , apecs
-    , apecs-physics
-    , base >=4.7 && <5
-    , binary
-    , bytestring
-    , bytestring-conversion
-    , colour
-    , containers
-    , cpu
-    , exception-transformers
-    , file-embed
-    , gameEngine
-    , lens
-    , linear
-    , massiv
-    , mtl
-    , polysemy
-    , random
-    , storable-tuple
-    , text
-    , transformers
-    , vector
-  default-language: Haskell2010
-
-test-suite gameEngine-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      Paths_gameEngine
-  hs-source-dirs:
-      test
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase ExistentialQuantification RankNTypes GADTs ScopedTypeVariables TypeOperators DataKinds KindSignatures DeriveFunctor GeneralizedNewtypeDeriving MultiParamTypeClasses TypeApplications TupleSections
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -fplugin=Polysemy.Plugin
   build-depends:
       Boolean
@@ -152,6 +124,47 @@ test-suite gameEngine-test
     , massiv
     , mtl
     , polysemy
+    , polysemy-plugin
+    , random
+    , storable-tuple
+    , text
+    , transformers
+    , vector
+  default-language: Haskell2010
+
+test-suite gameEngine-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_gameEngine
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -fplugin=Polysemy.Plugin
+  build-depends:
+      Boolean
+    , GLFW-b
+    , GPipe
+    , GPipe-GLFW
+    , JuicyPixels
+    , StateVar
+    , apecs
+    , apecs-physics
+    , base >=4.7 && <5
+    , binary
+    , bytestring
+    , bytestring-conversion
+    , colour
+    , containers
+    , cpu
+    , exception-transformers
+    , file-embed
+    , gameEngine
+    , lens
+    , linear
+    , massiv
+    , mtl
+    , polysemy
+    , polysemy-plugin
     , random
     , storable-tuple
     , text

@@ -1,26 +1,15 @@
-{-# LANGUAGE TypeFamilies #-}
-
 module Main where
 
-import Sigma
+import Graphics.GPipe.Format (WindowFormat(..), Format(..))
+import Graphics.GPipe.Context.GLFW (defaultHandleConfig, defaultWindowConfig)
 
-import Graphics.GPipe.Context.GLFW
-import Graphics.GPipe.Format (Format(RGBA12), WindowFormat(WindowFormatColor), RGBAFloat)
+import Sigma (limitFramerate)
+import Window.GPipe (runGPipe, RGBAFloat)
 
-import Control.Monad.IO.Class
-import Data.Text (Text, pack)
-import Polysemy
-import GPipe.Interface
-import Polysemy.Reader
+import SceneManager (sceneManager)
 
-import Effect.Apecs
-import Render
-import Step
-import Input
-import Types
+import GameInput
 
 main :: IO ()
-main = do
-  runGPipe defaultHandleConfig (WindowFormatColor $ RGBA12) (defaultWindowConfig "Test") . limitFramerate 60 . runApecs (liftIO initWorld) . feedGameInput $
-    withInitialization (initializeGameState *> initializeRenderData) $ \renderData ->
-      step *> signalMorph (runReader renderData) renderWorld *> pure False
+main = runGPipe defaultHandleConfig (WindowFormatColor $ RGBA12) (defaultWindowConfig "Test")
+         . feedGameInput . limitFramerate 60 $ sceneManager

@@ -5,20 +5,6 @@
 
 packages:
 - completed:
-    hackage: polysemy-1.0.0.0@sha256:5a4596f7ff06db81fc7e2f121fbe481871c348d3c5481297c6af983b728b075c,5509
-    pantry-tree:
-      size: 3044
-      sha256: c92228e91a15abba9269484fabb11730fbaa6f0fa308f4f485da28bc1ab0b7a0
-  original:
-    hackage: polysemy-1.0.0.0
-- completed:
-    hackage: sdl2-2.5.0.0@sha256:9b5b19ca4caf80cbd79e5815ffea13cfa2d2215d1b2ab10dc904bbe42ca47dc2,11303
-    pantry-tree:
-      size: 6571
-      sha256: 1069f5072a87b27eff43b892d021e4e327e77e5989c8f93864ef1965b99fd725
-  original:
-    hackage: sdl2-2.5.0.0
-- completed:
     hackage: first-class-families-0.5.0.0@sha256:6e1488c502d5b1e780739a53edab65a307c6bf94d4232fab70e696e87f0fa087,1290
     pantry-tree:
       size: 847
@@ -33,13 +19,6 @@ packages:
   original:
     hackage: th-abstraction-0.3.1.0
 - completed:
-    hackage: unagi-chan-0.4.1.0@sha256:2fe7e9e4fd4bda0e42762824ecd9059f20069939774406ddd54f9989b47b3e1a,8653
-    pantry-tree:
-      size: 2286
-      sha256: 1ad7dc27bf42375ffede50d01d4e00189aa427c51ccd117049759c867401bc0c
-  original:
-    hackage: unagi-chan-0.4.1.0
-- completed:
     hackage: type-errors-0.2.0.0@sha256:b8f97a0cf72f4fcdc9bfd02d753f84e65e5e5d165d53f82947a95cdcbd7f2945,2082
     pantry-tree:
       size: 368
@@ -47,43 +26,22 @@ packages:
   original:
     hackage: type-errors-0.2.0.0
 - completed:
-    hackage: loopbreaker-0.1.1.0@sha256:ec9f1b6d6beb969f4e2ed22926049cb3620a037e6adba173809edac0b585d837,2209
-    pantry-tree:
-      size: 758
-      sha256: 21fcb7d75c487e68006605b265fc8be9c2f90e140746cb6ebe0893e1912b8bb8
-  original:
-    hackage: loopbreaker-0.1.1.0
-- completed:
-    hackage: ratio-int-0.1.2@sha256:304c6558e75eff2c7799558651091811d1d92e611594af8ac51edd10dd6c5cd8,858
-    pantry-tree:
-      size: 162
-      sha256: b50b70c5e9063c681b781a9d5f866201ead8408a6a1b995b19b3fbec8f9fc028
-  original:
-    hackage: ratio-int-0.1.2
-- completed:
-    hackage: massiv-0.3.6.0@sha256:331a1cdd26413e068fbc98d3df2b45f9b7a62d67901b8d929643aef4ff777eee,6138
-    pantry-tree:
-      size: 5188
-      sha256: f4649693e45e5344d1c66bc29b27d060c5e68ce1512a21d73a0ce79372c50b6e
-  original:
-    hackage: massiv-0.3.6.0
-- completed:
-    hackage: scheduler-1.4.1@sha256:0676a4e31ac2b7567efa92a7ad6b1de13af7cd5f81140c2f56b671bc271b1211,2833
-    pantry-tree:
-      size: 838
-      sha256: a653c656f3d7f1cd5467c6b72d35dbc88911b7f7506f3650412098446c03d120
-  original:
-    hackage: scheduler-1.4.1
-- completed:
     hackage: type-errors-pretty-0.0.0.0@sha256:45f5a96387aeea8210431ca1570d7fddbdba3aef8f83e8ad280ea0a0b018bc43,2301
     pantry-tree:
       size: 339
       sha256: 29c003d18810ef41dc295db8550cc7cf94e6b923c3315eff7e5ba0dc62bc9604
   original:
     hackage: type-errors-pretty-0.0.0.0
+- completed:
+    hackage: unagi-chan-0.4.1.2@sha256:a20551027c44b67362cbaeb17b8ad6a0ea3263e66f536ba4583b71d32bbede4d,8708
+    pantry-tree:
+      size: 2286
+      sha256: db60804f413159add0e2f301e26f4fb923116086c4f3678b382cb9f172c7a45e
+  original:
+    hackage: unagi-chan-0.4.1.2
 snapshots:
 - completed:
-    size: 500539
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/13/27.yaml
-    sha256: 690db832392afe55733b4c7023fd29b1b1c660ee42f1fb505b86b07394ca994e
-  original: lts-13.27
+    size: 524104
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/5.yaml
+    sha256: 3c146eebc1b383211ea49d5422fb3d63d699da12307b4bc989107300eb579d60
+  original: lts-14.5

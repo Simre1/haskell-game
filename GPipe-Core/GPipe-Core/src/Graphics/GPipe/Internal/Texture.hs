@@ -256,12 +256,12 @@ type StartPos2 = V2 Int
 type StartPos3 = V3 Int
 
 
-writeTexture1D      :: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture1D (Format c) -> Level -> StartPos1 -> Size1 -> [h] -> ContextT ctx m ()
-writeTexture1DArray :: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture1DArray (Format c) -> Level -> StartPos2 -> Size2 -> [h] -> ContextT ctx m ()
-writeTexture2D      :: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture2D (Format c) -> Level -> StartPos2 -> Size2 -> [h] -> ContextT ctx m ()
-writeTexture2DArray :: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture2DArray (Format c) -> Level -> StartPos3 -> Size3 -> [h] -> ContextT ctx m ()
-writeTexture3D      :: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture3D (Format c) -> Level -> StartPos3 -> Size3 -> [h] -> ContextT ctx m ()
-writeTextureCube    :: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => TextureCube (Format c) -> Level -> CubeSide -> StartPos2 -> Size2 -> [h] -> ContextT ctx m ()
+writeTexture1D      :: forall ctx b c h w f m t. (Foldable t, ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture1D (Format c) -> Level -> StartPos1 -> Size1 -> t h -> ContextT ctx m ()
+writeTexture1DArray :: forall ctx b c h w f m t. (Foldable t, ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture1DArray (Format c) -> Level -> StartPos2 -> Size2 -> t h -> ContextT ctx m ()
+writeTexture2D      :: forall ctx b c h w f m t. (Foldable t, ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture2D (Format c) -> Level -> StartPos2 -> Size2 -> t h -> ContextT ctx m ()
+writeTexture2DArray :: forall ctx b c h w f m t. (Foldable t, ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture2DArray (Format c) -> Level -> StartPos3 -> Size3 -> t h -> ContextT ctx m ()
+writeTexture3D      :: forall ctx b c h w f m t. (Foldable t, ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => Texture3D (Format c) -> Level -> StartPos3 -> Size3 -> t h -> ContextT ctx m ()
+writeTextureCube    :: forall ctx b c h w f m t. (Foldable t, ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) h ~ b, h ~ HostFormat b) => TextureCube (Format c) -> Level -> CubeSide -> StartPos2 -> Size2 -> t h -> ContextT ctx m ()
 
 writeTexture1DFromBuffer     :: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) (HostFormat b) ~ b) => Texture1D (Format c) -> Level -> StartPos1 -> Size1 -> Buffer b -> BufferStartPos -> ContextT ctx m ()
 writeTexture1DArrayFromBuffer:: forall ctx b c h w f m. (ContextHandler ctx, MonadIO m, BufferFormat b, ColorSampleable c, BufferColor (Color c (ColorElement c)) (HostFormat b) ~ b) => Texture1DArray (Format c) -> Level -> StartPos2 -> Size2 -> Buffer b -> BufferStartPos -> ContextT ctx m ()
@@ -296,7 +296,7 @@ writeTexture1D t@(Texture1D texn _ ml) l x w d
                      let b = makeBuffer undefined undefined 0 :: Buffer b
                          size = w*bufElementSize b
                      allocaBytes size $ \ ptr -> do
-                         end <- bufferWriteInternal b ptr (take w d)
+                         end <- bufferWriteInternal b ptr w d
                          if end `minusPtr` ptr /= size
                             then error "writeTexture1D, data list too short"
                             else do
@@ -314,7 +314,7 @@ writeTexture1DArray t@(Texture1DArray texn _ ml) l (V2 x y) (V2 w h) d
                      let b = makeBuffer undefined undefined 0 :: Buffer b
                          size = w*h*bufElementSize b
                      allocaBytes size $ \ ptr -> do
-                         end <- bufferWriteInternal b ptr (take (w*h) d)
+                         end <- bufferWriteInternal b ptr (w*h) d
                          if end `minusPtr` ptr /= size
                             then error "writeTexture1DArray, data list too short"
                             else do
@@ -331,7 +331,7 @@ writeTexture2D t@(Texture2D texn _ ml) l (V2 x y) (V2 w h) d
                      let b = makeBuffer undefined undefined 0 :: Buffer b
                          size = w*h*bufElementSize b
                      allocaBytes size $ \ ptr -> do
-                         end <- bufferWriteInternal b ptr (take (w*h) d)
+                         end <- bufferWriteInternal b ptr (w*h) d
                          if end `minusPtr` ptr /= size
                             then error "writeTexture2D, data list too short"
                             else do
@@ -350,7 +350,7 @@ writeTexture2DArray t@(Texture2DArray texn _ ml) l (V3 x y z) (V3 w h d) dat
                      let b = makeBuffer undefined undefined 0 :: Buffer b
                          size = w*h*d*bufElementSize b
                      allocaBytes size $ \ ptr -> do
-                         end <- bufferWriteInternal b ptr (take (w*h*d) dat)
+                         end <- bufferWriteInternal b ptr (w*h*d) dat
                          if end `minusPtr` ptr /= size
                             then error "writeTexture2DArray, data list too short"
                             else do
@@ -369,7 +369,7 @@ writeTexture3D t@(Texture3D texn _ ml) l (V3 x y z) (V3 w h d) dat
                      let b = makeBuffer undefined undefined 0 :: Buffer b
                          size = w*h*d*bufElementSize b
                      allocaBytes size $ \ ptr -> do
-                         end <- bufferWriteInternal b ptr (take (w*h*d) dat)
+                         end <- bufferWriteInternal b ptr (w*h*d) dat
                          if end `minusPtr` ptr /= size
                             then error "writeTexture3D, data list too short"
                             else do
@@ -386,7 +386,7 @@ writeTextureCube t@(TextureCube texn _ ml) l s (V2 x y) (V2 w h) d
                      let b = makeBuffer undefined undefined 0 :: Buffer b
                          size = w*h*bufElementSize b
                      allocaBytes size $ \ ptr -> do
-                         end <- bufferWriteInternal b ptr (take (w*h) d)
+                         end <- bufferWriteInternal b ptr (w*h) d
                          if end `minusPtr` ptr /= size
                             then error "writeTextureCube, data list too short"
                             else do

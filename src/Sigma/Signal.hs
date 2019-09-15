@@ -1,14 +1,20 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
+
 
 module Sigma.Signal where
 
-import Polysemy
-import Polysemy.NonDet
-import Polysemy.Reader
-import Data.Functor ((<&>))
 import Control.Arrow (second)
-import Polysemy.State
+import Data.Functor ((<&>))
+import Polysemy (interpret, Member, Sem)
+import Polysemy.NonDet (NonDet)
+import Polysemy.Reader (Reader, runReader, ask)
+import Polysemy.State (State, get, put, modify, runState)
 
 data Signal m a = Signal {stepSignal :: m (a, Signal m a)}
 

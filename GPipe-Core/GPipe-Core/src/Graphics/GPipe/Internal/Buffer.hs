@@ -33,6 +33,7 @@ import Control.Monad (void)
 import Foreign.Storable
 import Foreign.Ptr
 import Control.Monad.IO.Class
+import Data.Monoid (Endo(Endo), appEndo)
 import Data.Word
 import Data.Int
 import Control.Monad.Trans.State.Strict
@@ -335,13 +336,27 @@ newBuffer elementCount | elementCount < 0 = error "newBuffer, length negative"
     addVAOBufferFinalizer nameRef
     return buffer
 
-bufferWriteInternal :: Buffer f -> Ptr () -> [HostFormat f] -> IO (Ptr ())
-bufferWriteInternal b ptr (x:xs) = do bufWriter b ptr x
-                                      bufferWriteInternal b (ptr `plusPtr` bufElementSize b) xs
-bufferWriteInternal _ ptr [] = pure ptr 
+newtype IOEndo a = IOEndo {appIOEndo :: a -> IO a}
+
+instance Semigroup (IOEndo a) where
+  (IOEndo f) <> (IOEndo f2) = IOEndo (\a -> f a >>= f2)
+
+instance Monoid (IOEndo a) where
+  mempty = IOEndo (pure . id)
+
+bufferWriteInternal :: forall f t. Foldable t => Buffer f -> Ptr () -> Int -> t (HostFormat f) -> IO (Ptr ())
+bufferWriteInternal buffer ptr maxElems elems = fmap snd . flip appIOEndo (maxElems, ptr) $ foldMap write elems
+  where
+    write :: HostFormat f -> IOEndo (Int, Ptr ())
+    write currentElem = IOEndo $ \(remainingElems, dataPtr) ->
+      if (remainingElems >= 0)
+        then do
+          bufWriter buffer dataPtr currentElem
+          pure (pred remainingElems, dataPtr `plusPtr` bufElementSize buffer)
+        else pure (remainingElems, dataPtr)
 
 -- | Write a buffer from the host (i.e. the normal Haskell world).
-writeBuffer :: (ContextHandler ctx, MonadIO m) => Buffer b -> BufferStartPos -> [HostFormat b] -> ContextT ctx m ()
+writeBuffer :: Foldable t => (ContextHandler ctx, MonadIO m) => Buffer b -> BufferStartPos -> t (HostFormat b) -> ContextT ctx m ()
 writeBuffer buffer offset elems | offset < 0 || offset >= bufferLength buffer = error "writeBuffer, offset out of bounds"
                                 | otherwise =
     let maxElems = max 0 $ bufferLength buffer - offset
@@ -352,7 +367,7 @@ writeBuffer buffer offset elems | offset < 0 || offset >= bufferLength buffer = 
         bname <- readIORef $ bufName buffer
         glBindBuffer GL_COPY_WRITE_BUFFER bname
         ptr <- glMapBufferRange GL_COPY_WRITE_BUFFER off (fromIntegral $maxElems * elemSize) (GL_MAP_WRITE_BIT + GL_MAP_FLUSH_EXPLICIT_BIT)
-        end <- bufferWriteInternal buffer ptr (take maxElems elems)
+        end <- bufferWriteInternal buffer ptr maxElems elems
         glFlushMappedBufferRange GL_COPY_WRITE_BUFFER off (fromIntegral $ end `minusPtr` ptr)
         void $ glUnmapBuffer GL_COPY_WRITE_BUFFER
 

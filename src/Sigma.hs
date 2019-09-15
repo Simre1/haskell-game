@@ -10,9 +10,6 @@ module Sigma
   , reactimate
   , reactimateUntilTrue
   , switch
-  , reactimate
-  , reactimateUntilTrue
-  , limitFramerate
   ) where
 
 import Sigma.Signal
