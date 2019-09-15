@@ -1,6 +1,6 @@
 # haskell-game
 
-A game in progress using [apecs](https://github.com/jonascarpay/apecs) for handling the game state as well as physics, [polysemy](https://github.com/polysemy-research/polysemy.git) for algebraic effects, a slightly modified version of [GPipe](https://github.com/tobbebex/GPipe-Core.git) for graphics and my own interpretation of FRP Signals*(Sigma)* for data flow management.
+A game in progress using [apecs](https://github.com/jonascarpay/apecs) for handling the game state as well as physics, [polysemy](https://github.com/polysemy-research/polysemy.git) for algebraic effects, a slightly modified version of [GPipe](https://github.com/tobbebex/GPipe-Core.git) for graphics and my own interpretation of FRP Signals *(Sigma)* for data flow management.
 
 ## Getting Started
 
