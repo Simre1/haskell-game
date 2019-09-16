@@ -24,7 +24,7 @@ makePlayerShader = makeWindowAction $ \win -> do
     primitiveStream <- toPrimitiveStream fst
     let primitiveStream2 = fmap (\(V2 x y) -> (V4 x y 0 1, ((V2 x y + V2 1 1) / V2 2 2))) primitiveStream
     fragmentStream <- rasterize (\(_,(pos, winSize)) -> (Front, adjustViewPort winSize $ ViewPort pos ((V2 36 72)), DepthRange 0 1)) primitiveStream2
-    let filter = SamplerFilter Linear Linear Linear Nothing
+    let filter = SamplerNearest
         edge = (pure ClampToEdge, undefined)
     samp <- newSampler2D (const (tex, filter, edge))
     let sampleTexture = sample2D samp SampleAuto Nothing Nothing

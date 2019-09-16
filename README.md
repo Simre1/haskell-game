@@ -19,6 +19,8 @@ stack build
 stack exec haskell-game-exe
 ```
 
+Press *Space* to start the game and then use the *arrow keys* to move and _Space_ to shoot!
+
 
 ## Checking out the code
 
