@@ -28,7 +28,7 @@ makePlayerShader = makeWindowAction $ \win -> do
         edge = (pure ClampToEdge, undefined)
     samp <- newSampler2D (const (tex, filter, edge))
     let sampleTexture = sample2D samp SampleAuto Nothing Nothing
-        fragmentStream2 = fmap sampleTexture fragmentStream
+        fragmentStream2 = fmap ((V4 0.7 0.7 0.7 1 *) . sampleTexture) fragmentStream
 
     drawWindowColor (const (win, ContextColorOption blending (pure True))) (fragmentStream2)
   pure $ \pos -> makeWindowAction $ \_ -> do
