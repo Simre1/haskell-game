@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: de6a663e41e40bd86f7ca01074280a459452a40f2e5a23d7afafefe8570d8436
+-- hash: 2756bc59269d97c081aa5eae4eaf7db34312bbf61eac1cccf7728e2032937569
 
 name:           haskell-game
 version:        0.1.0.0
@@ -79,7 +79,10 @@ executable haskell-game-exe
       Render.Level.Bullet
       Render.Level.Enemy
       Render.Level.Player
+      Render.PresentRender
+      Render.StartGame.All
       SceneManager
+      StartGame.Scene
       Paths_haskell_game
   hs-source-dirs:
       app
