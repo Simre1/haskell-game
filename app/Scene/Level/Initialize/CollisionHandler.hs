@@ -1,11 +1,11 @@
-module Level.Initialize.CollisionHandler where
+module Scene.Level.Initialize.CollisionHandler where
 
 import Control.Monad.IO.Class (MonadIO)
 
 import ECS.Apecs (SystemT, newEntity, Proxy(..), destroy)
 import ECS.Physics (mkBeginCB, CollisionHandler(..), Collision(..), Shape, Body, CollisionSource(Between), addPostStepCallback)
 
-import Level.World (World, Bullet, Player, Enemy)
+import Scene.Level.World (World, Bullet, Player, Enemy)
 
 
 initializeCollisionHandlers :: MonadIO m => SystemT World m ()

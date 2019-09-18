@@ -1,4 +1,4 @@
-module Level.Spawn.Bullet where
+module Scene.Level.Spawn.Bullet where
 
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO)
@@ -8,7 +8,7 @@ import Linear.V2 (V2(..))
 import ECS.Physics (Body(..), Shape(..), Mass(..), Sensor (..), CollisionFilter(..), Velocity, Position, CollisionType(..), maskList, cRectangle)
 import ECS.Apecs (SystemT, newEntity)
 
-import Level.World (Bullet(..), BulletType(..), World)
+import Scene.Level.World (Bullet(..), BulletType(..), World)
 
 
 spawnStraightBullet :: MonadIO m => Position -> Velocity -> Bool -> SystemT World m ()

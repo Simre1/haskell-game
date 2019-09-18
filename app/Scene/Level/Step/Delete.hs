@@ -1,4 +1,4 @@
-module Level.Step.Delete where
+module Scene.Level.Step.Delete where
 
 import Control.Monad.IO.Class (MonadIO)
 import Linear.V2 (V2(..))
@@ -6,8 +6,8 @@ import Linear.V2 (V2(..))
 import ECS.Apecs (SystemT, cmapM, destroy, Not(..), Proxy(..))
 import ECS.Physics (Position(..), ShapeList(..), Body, Shape)
 
-import Level.World (World, Enemy, Player, Bullet)
-import Level.WorldAccessors (getPlayerPosition)
+import Scene.Level.World (World, Enemy, Player, Bullet)
+import Scene.Level.WorldAccessors (getPlayerPosition)
 
 deleteOutOfBounds :: (MonadIO m) => SystemT World m ()
 deleteOutOfBounds = do

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 
-module Level.WorldAccessors where
+module Scene.Level.WorldAccessors where
 
 import Control.Monad.IO.Class (MonadIO)
 import Linear.V2 (V2(..))
@@ -9,7 +9,7 @@ import Linear.V2 (V2(..))
 import ECS.Apecs (ApecsSystem, executeApecsSystem, lift, cmapM_, cfold, SystemT)
 import ECS.Physics (Position(..))
 
-import Level.World (World, Bullet(..), BulletType, Enemy(..), EnemyType, Player(..))
+import Scene.Level.World (World, Bullet(..), BulletType, Enemy(..), EnemyType, Player(..))
 
 forEachBullet :: MonadIO m => (BulletType -> V2 Double -> SystemT World m ()) -> SystemT World m ()
 forEachBullet f = cmapM_ $ \(Bullet bulletType, Position pos) -> f (bulletType) pos
@@ -25,3 +25,6 @@ getPlayerPosition = cfold (\_ (Player _, Position pos) -> pos) (V2 240 100)
 
 isPlayerAlive :: MonadIO m => SystemT World m Bool
 isPlayerAlive = cfold (\_ (Player _) -> True) False
+
+areEnemiesAlive :: MonadIO m => SystemT World m Bool
+areEnemiesAlive = cfold (\_ (Enemy _) -> True) False

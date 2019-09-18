@@ -6,7 +6,7 @@ import Graphics.GPipe.Context.GLFW (defaultHandleConfig, defaultWindowConfig)
 import Sigma (limitFramerate)
 import Window.GPipe (runGPipe, RGBAFloat)
 
-import SceneManager (sceneManager)
+import Scene.SceneManager (sceneManager)
 
 import GameInput
 

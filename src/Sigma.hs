@@ -10,6 +10,7 @@ module Sigma
   , reactimate
   , reactimateUntilTrue
   , switch
+  , switch_
   ) where
 
 import Sigma.Signal

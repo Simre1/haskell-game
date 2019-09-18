@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2756bc59269d97c081aa5eae4eaf7db34312bbf61eac1cccf7728e2032937569
+-- hash: 7b30074a68baf98ad1d9971b5703e451662cde7c26b2e082d358dc93ccb82ab5
 
 name:           haskell-game
 version:        0.1.0.0
@@ -61,18 +61,6 @@ executable haskell-game-exe
   main-is: Main.hs
   other-modules:
       GameInput
-      Level.Initialize.CollisionHandler
-      Level.Initialize.Player
-      Level.Scene
-      Level.Spawn.Bullet
-      Level.Spawn.Enemy
-      Level.Step.Delete
-      Level.Step.Enemy
-      Level.Step.Physics
-      Level.Step.Player
-      Level.Step.Scenario
-      Level.World
-      Level.WorldAccessors
       MyWindow
       Render.Level.All
       Render.Level.Background
@@ -81,8 +69,21 @@ executable haskell-game-exe
       Render.Level.Player
       Render.PresentRender
       Render.StartGame.All
-      SceneManager
-      StartGame.Scene
+      Scene.Level.Initialize.CollisionHandler
+      Scene.Level.Initialize.Player
+      Scene.Level.Scene
+      Scene.Level.Spawn.Bullet
+      Scene.Level.Spawn.Enemy
+      Scene.Level.Step.Delete
+      Scene.Level.Step.Enemy
+      Scene.Level.Step.Physics
+      Scene.Level.Step.Player
+      Scene.Level.Step.Scenario
+      Scene.Level.World
+      Scene.Level.WorldAccessors
+      Scene.SceneManager
+      Scene.Scenes
+      Scene.StartGame.Scene
       Paths_haskell_game
   hs-source-dirs:
       app

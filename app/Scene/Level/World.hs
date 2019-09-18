@@ -3,13 +3,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Level.World where
+module Scene.Level.World where
 
 import ECS.Apecs (Component(..), Map, Unique, makeWorld, Has(..), asks, SystemT(..), explInit)
 import ECS.Physics (Physics)
 
 
-data Player = Player Double
+data Player = Player Int
 
 instance Component Player where
   type Storage Player = Unique Player
@@ -22,8 +22,9 @@ data Bullet = Bullet BulletType
 instance Component Bullet where
   type Storage Bullet = Map Bullet
 
+data QuantifiedSpeed = Slowest | Slow | Medium | Fast | Fastest deriving (Enum, Eq, Bounded)
 
-data EnemyType = Argo Int deriving Eq
+data EnemyType = Argo Int QuantifiedSpeed deriving Eq
 
 data Enemy = Enemy EnemyType
 
